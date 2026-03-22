@@ -1,0 +1,261 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Dashboard — Shefa Dairies Inventory{% endblock %}
+
+{% block nav_dashboard %}active{% endblock %}
+
+{% block page_title %}
+<span class="page-title"><strong>Dashboard</strong> Overview</span>
+{% endblock %}
+
+{% block content %}
+
+<!-- Chart data passed cleanly to JS -->
+<script id="chart-data" type="application/json">
+  {
+    "labels": {{ sales_labels|safe }},
+    "data": {{ sales_data|safe }}
+  }
+</script>
+
+<!-- STAT CARDS -->
+<div class="stat-grid">
+  <div class="stat-card blue">
+    <div>
+      <div class="stat-label">Total Sale Orders</div>
+      <div class="stat-value">{{ total_sales }}</div>
+    </div>
+    <div class="stat-icon">
+      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
+        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <path d="M16 10a4 4 0 0 1-8 0" />
+      </svg>
+    </div>
+  </div>
+
+  <div class="stat-card green">
+    <div>
+      <div class="stat-label">Total Products</div>
+      <div class="stat-value">{{ total_products }}</div>
+    </div>
+    <div class="stat-icon">
+      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
+        <path
+          d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      </svg>
+    </div>
+  </div>
+
+  <div class="stat-card amber">
+    <div>
+      <div class="stat-label">Inventory Value</div>
+      <div class="stat-value large">KSh {{ inventory_value|floatformat:2 }}</div>
+    </div>
+    <div class="stat-icon">
+      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
+        <line x1="18" y1="20" x2="18" y2="10" />
+        <line x1="12" y1="20" x2="12" y2="4" />
+        <line x1="6" y1="20" x2="6" y2="14" />
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- CHART + ALERTS -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Sales Trend (Last 30 Days)</span>
+    </div>
+    <div class="card-body">
+      <div class="chart-wrap">
+        <canvas id="salesChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Inventory Alerts</span>
+    </div>
+    <div class="card-body">
+      <div class="alert-item red">
+        <div class="alert-left red">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          Out of Stock
+        </div>
+        <div class="alert-badge red">{{ out_of_stock_count }}</div>
+      </div>
+
+      <div class="alert-item amber">
+        <div class="alert-left amber">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          Low Stock
+        </div>
+        <div class="alert-badge amber">{{ low_stock_count }}</div>
+      </div>
+
+      <div class="alert-item cyan">
+        <div class="alert-left cyan">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+            <polyline points="17 6 23 6 23 12" />
+          </svg>
+          Forecast Updates Needed
+        </div>
+        <div class="alert-badge cyan">0</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RECENT SALES + TOP SELLING -->
+<div class="grid-2b">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Recent Sales</span>
+      <a href="#" class="view-all">View All →</a>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Qty</th>
+          <th>Amount</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sale in recent_sales %}
+        <tr>
+          <td>{{ sale.product.name }}</td>
+          <td>{{ sale.quantity_sold }}</td>
+          <td>KSh {{ sale.total_sale_value|floatformat:2 }}</td>
+          <td>{{ sale.date|date:"d M Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td class="empty-row" colspan="4">No recent sales found</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Top Selling Products</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Category</th>
+          <th>Units Sold</th>
+          <th>Stock</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in top_products %}
+        <tr>
+          <td>{{ item.product__name }}</td>
+          <td>{{ item.product__category__name }}</td>
+          <td>{{ item.total_sold }}</td>
+          <td>{{ item.product__stock_quantity }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td class="empty-row" colspan="4">No sales data available</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- QUICK ACTIONS -->
+<div class="quick-actions">
+  <div class="quick-title">Quick Actions</div>
+  <div class="quick-btns">
+    <a href="#" class="quick-btn primary">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+        <polyline points="17 6 23 6 23 12" />
+      </svg>
+      Generate Forecasts
+    </a>
+    <a href="#" class="quick-btn outline">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
+      </svg>
+      Add Product
+    </a>
+    <a href="#" class="quick-btn outline">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M9 17H5a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v0a2 2 0 0 0-2-2h-4" />
+        <path d="M12 3v14" />
+        <path d="m8 7 4-4 4 4" />
+      </svg>
+      Record Sale
+    </a>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const chartData = JSON.parse(document.getElementById('chart-data').textContent);
+  const labels = chartData.labels;
+  const data = chartData.data;
+
+  const ctx = document.getElementById('salesChart').getContext('2d');
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Units Sold',
+        data: data,
+        borderColor: '#3B5BDB',
+        backgroundColor: 'rgba(59,91,219,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        tension: 0.4,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { font: { family: 'DM Sans', size: 11 }, color: '#6b7280' }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { family: 'DM Sans', size: 10 }, color: '#9ca3af' }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: '#f0f0f0' },
+          ticks: { font: { family: 'DM Sans', size: 10 }, color: '#9ca3af' }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

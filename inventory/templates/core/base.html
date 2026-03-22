@@ -1,0 +1,203 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Shefa Dairies Inventory{% endblock %}</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+
+  {% if user.is_authenticated %}
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">P<span>IMS</span></div>
+      <div class="logo-text">
+        Shefa Dairies
+        <small>Inventory</small>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <div class="nav-section">Dashboard</div>
+      <a href="{% url 'core:dashboard' %}" class="nav-item {% block nav_dashboard %}{% endblock %}">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="7" height="7" />
+          <rect x="14" y="3" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" />
+          <rect x="3" y="14" width="7" height="7" />
+        </svg>
+        Dashboard Overview
+      </a>
+
+      <div class="nav-section">Sales</div>
+      <a href="#" class="nav-item {% block nav_sales %}{% endblock %}">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path d="M9 17H5a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v0a2 2 0 0 0-2-2h-4" />
+          <path d="M12 3v14" />
+          <path d="m8 7 4-4 4 4" />
+        </svg>
+        Sales Report
+      </a>
+
+      <div class="nav-section">Inventory</div>
+      <a href="{% url 'core:product_list' %}" class="nav-item {% block nav_products %}{% endblock %}">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path
+            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        </svg>
+        Products
+      </a>
+      <a href="#" class="nav-item {% block nav_outofstock %}{% endblock %}">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+        </svg>
+        Out of Stock
+      </a>
+      <a href="#" class="nav-item {% block nav_lowstock %}{% endblock %}">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+        Low Stock
+      </a>
+
+      <div class="nav-section">Forecast</div>
+      <a href="#" class="nav-item {% block nav_forecast %}{% endblock %}">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+          <polyline points="17 6 23 6 23 12" />
+        </svg>
+        Forecast Patterns
+      </a>
+      <a href="#" class="nav-item {% block nav_generate %}{% endblock %}">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+        </svg>
+        Generate Forecasts
+      </a>
+      <a href="#" class="nav-item {% block nav_produce %}{% endblock %}">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <rect x="2" y="3" width="20" height="14" rx="2" />
+          <line x1="8" y1="21" x2="16" y2="21" />
+          <line x1="12" y1="17" x2="12" y2="21" />
+        </svg>
+        Produce Forecasts
+      </a>
+      <a href="#" class="nav-item {% block nav_results %}{% endblock %}">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+        View Forecast Results
+      </a>
+
+      <div class="nav-section">Reports</div>
+      <a href="#" class="nav-item {% block nav_report %}{% endblock %}">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+        Forecast Report
+      </a>
+
+      {% if user.is_staff %}
+      <div class="nav-section">Admin</div>
+      <a href="{% url 'admin:index' %}" class="nav-item">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+        </svg>
+        Admin Panel
+      </a>
+      {% endif %}
+
+    </nav>
+  </aside>
+  {% endif %}
+
+  <!-- ── MAIN ── -->
+  <div class="main {% if not user.is_authenticated %}main-full{% endif %}" id="main-content">
+
+    {% if user.is_authenticated %}
+    <!-- ── TOPBAR ── -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-btn" id="sidebarToggle">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        {% block page_title %}{% endblock %}
+      </div>
+      <div class="topbar-right">
+        <span class="username">{{ user.username }}</span>
+        <form method="post" action="{% url 'logout' %}" style="display:inline">
+          {% csrf_token %}
+          <button type="submit" class="btn-logout">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Logout
+          </button>
+        </form>
+      </div>
+    </header>
+    {% endif %}
+
+    <!-- ── CONTENT ── -->
+    <main class="content">
+      {% if messages %}
+      <div class="messages-wrap">
+        {% for message in messages %}
+        <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- ── FOOTER ── -->
+    <footer class="site-footer">
+      © {% now "Y" %} Shefa Dairies Inventory System
+    </footer>
+
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const toggle = document.getElementById('sidebarToggle');
+      const sidebar = document.getElementById('sidebar');
+      const main = document.getElementById('main-content');
+      if (toggle) {
+        toggle.addEventListener('click', function () {
+          sidebar.classList.toggle('collapsed');
+          main.classList.toggle('main-expanded');
+        });
+      }
+    });
+  </script>
+
+  {% block extra_js %}{% endblock %}
+
+</body>
+
+</html>

@@ -1,0 +1,140 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Register — Shefa Dairies Inventory{% endblock %}
+
+{% block content %}
+
+<div class="auth">
+  <div class="auth__card">
+
+    <div class="auth__logo">
+      <div class="logo-mark">P<span>IMS</span></div> <!---ADD SHEFA LOGO-->>
+    </div>
+
+    <h1 class="auth__title">Inventory Management System</h1>
+    <p class="auth__subtitle">Create your account</p>
+
+    <form class="auth__form" method="post" action="{% url 'register' %}">
+      {% csrf_token %}
+
+      <!-- Username -->
+      <div class="auth__field">
+        <label class="auth__label" for="id_username">Username</label>
+        <div class="auth__input-wrap">
+          <span class="auth__input-icon">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </span>
+          <input type="text" name="username" id="id_username" placeholder="Enter a username"
+            value="{{ form.username.value|default_if_none:'' }}"
+            class="auth__input {% if form.username.errors %}auth__input--invalid{% endif %}">
+        </div>
+        {% if form.username.errors %}
+        <ul class="auth__error-list">{% for e in form.username.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+      </div>
+
+      <!-- Email -->
+      <div class="auth__field">
+        <label class="auth__label" for="id_email">Email address</label>
+        <div class="auth__input-wrap">
+          <span class="auth__input-icon">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+          </span>
+          <input type="email" name="email" id="id_email" placeholder="Enter your email"
+            value="{{ form.email.value|default_if_none:'' }}"
+            class="auth__input {% if form.email.errors %}auth__input--invalid{% endif %}">
+        </div>
+        {% if form.email.errors %}
+        <ul class="auth__error-list">{% for e in form.email.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+      </div>
+
+      <!-- Password -->
+      <div class="auth__field">
+        <label class="auth__label" for="id_password1">Password</label>
+        <div class="auth__input-wrap">
+          <span class="auth__input-icon">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </span>
+          <input type="password" name="password1" id="id_password1" placeholder="Create a password"
+            class="auth__input {% if form.password1.errors %}auth__input--invalid{% endif %}">
+          <button type="button" class="auth__toggle-pw" onclick="togglePw('id_password1')">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
+        </div>
+        {% if form.password1.errors %}
+        <ul class="auth__error-list">{% for e in form.password1.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+        {% if form.password1.help_text %}
+        <div class="auth__help-text">{{ form.password1.help_text }}</div>
+        {% endif %}
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="auth__field">
+        <label class="auth__label" for="id_password2">Confirm Password</label>
+        <div class="auth__input-wrap">
+          <span class="auth__input-icon">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </span>
+          <input type="password" name="password2" id="id_password2" placeholder="Confirm your password"
+            class="auth__input {% if form.password2.errors %}auth__input--invalid{% endif %}">
+          <button type="button" class="auth__toggle-pw" onclick="togglePw('id_password2')">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+          </button>
+        </div>
+        {% if form.password2.errors %}
+        <ul class="auth__error-list">{% for e in form.password2.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="auth__btn-submit">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="8.5" cy="7" r="4" />
+          <line x1="20" y1="8" x2="20" y2="14" />
+          <line x1="23" y1="11" x2="17" y2="11" />
+        </svg>
+        Create Account
+      </button>
+
+    </form>
+
+    <p class="auth__link">Already have an account? <a href="{% url 'login' %}">Sign in here</a></p>
+
+  </div>
+
+  <div class="auth__footer-note">
+    © {% now "Y" %} Shefa Dairies Digital. All rights reserved.
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function togglePw(id) {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+</script>
+{% endblock %}
