@@ -1,9 +1,9 @@
 {% extends 'core/base.html' %}
 
-{% block title %}{% if product %}Edit Product{% else %}Add Product{% endif %} - Shefa Dairies Inventory{% endblock %}
+{% block title %}{% if product %}Edit Product{% else %}Add Inventory{% endif %} - Shefa Dairies Inventory{% endblock %}
 {% block nav_products %}active{% endblock %}
 
-{% block page_title %}<h2>{% if product %}Edit Product{% else %}Add Product{% endif %}</h2>{% endblock %}
+{% block page_title %}<h2>{% if product %}Edit Product{% else %}Add Inventory{% endif %}</h2>{% endblock %}
 
 {% block content %}
 <div class="form-card"
@@ -16,7 +16,7 @@
     <div style="margin-top: 30px; display: flex; gap: 15px;">
       <button type="submit"
         style="background: #2563eb; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: 500;">Save
-        Product</button>
+        Inventory</button>
       <a href="{% url 'core:product_list' %}"
         style="display: flex; align-items: center; color: #666; text-decoration: none; padding: 10px; font-weight: 500;">Cancel</a>
     </div>

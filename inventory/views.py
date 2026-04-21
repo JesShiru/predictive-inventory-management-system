@@ -88,10 +88,9 @@ from django.db.models import F
 def product_list(request):
     products = Product.objects.select_related('category', 'supplier').all()
 
-    # Filters
-    category = request.GET.get('category')
-    location = request.GET.get('location')
-    status   = request.GET.get('status')
+    category = request.GET.get('category', '')
+    location = request.GET.get('location', '')
+    status   = request.GET.get('status', '')
 
     if category:
         products = products.filter(category__name=category)
@@ -102,17 +101,30 @@ def product_list(request):
     elif status == 'out':
         products = products.filter(stock_quantity=0)
 
-    # Summary counts (on unfiltered queryset)
     all_products = Product.objects.all()
-    total_products   = all_products.count()
-    low_stock_count  = all_products.filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level')).count()
+    total_products     = all_products.count()
+    low_stock_count    = all_products.filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level')).count()
     out_of_stock_count = all_products.filter(stock_quantity=0).count()
+
+    category_choices = ['Yoghurt', 'Raw Materials']
 
     return render(request, 'core/product_list.html', {
         'products': products,
         'total_products': total_products,
         'low_stock_count': low_stock_count,
         'out_of_stock_count': out_of_stock_count,
+        'category_options': [
+            {'value': c, 'label': c, 'selected': category == c}
+            for c in category_choices
+        ],
+        'location_options': [
+            {'value': 'STORE',     'label': 'Store',     'selected': location == 'STORE'},
+            {'value': 'COLD ROOM', 'label': 'Cold Room', 'selected': location == 'COLD ROOM'},
+        ],
+        'status_options': [
+            {'value': 'low', 'label': 'Low Stock',    'selected': status == 'low'},
+            {'value': 'out', 'label': 'Out of Stock', 'selected': status == 'out'},
+        ],
     })
 
 @login_required
@@ -151,7 +163,6 @@ def product_delete(request, pk):
 
 
 # Sales API Endpoint
-
 @require_http_methods(["POST"])
 @login_required
 def sale_create(request):
@@ -222,3 +233,19 @@ def sale_create(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
+# sales form view
+@login_required
+def sale_form_view(request):
+    products = Product.objects.select_related('category').filter(category__name='Yoghurt')
+    product_options = [
+        {
+            'val':   str(p.pk),
+            'label': f"{p.name} ({p.get_stock_location_display()})",
+            'stock': p.stock_quantity,
+            'price': str(p.unit_price),
+        }
+        for p in products
+    ]
+    return render(request, 'core/sales_form.html', {
+        'product_options': product_options,
+    })

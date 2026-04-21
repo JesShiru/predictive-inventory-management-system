@@ -1,0 +1,281 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Record Sale{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/sales_form.css' %}">
+{% endblock %}
+
+{% block nav_sales %}active{% endblock %}
+
+{% block content %}
+
+<a href="{% url 'core:product_list' %}" class="back-link">
+    <svg width="14" height="14" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        stroke-width="2.5">
+        <polyline points="15 18 9 12 15 6" />
+    </svg>
+    Back to Inventory
+</a>
+
+<h1 class="sf-title">Record a Sale</h1>
+
+<div class="form-card">
+
+    <!-- Success banner -->
+    <div class="success-banner" id="success-banner">
+        <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12" />
+        </svg>
+        <span id="success-msg">Sale recorded successfully.</span>
+    </div>
+
+    <!-- Error banner -->
+    <div class="error-banner" id="error-banner">
+        <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span id="error-msg">Something went wrong.</span>
+    </div>
+
+    <p class="section-heading">Sale Details</p>
+
+    <!-- Product -->
+    <div class="field-group">
+        <label class="field-label" for="id_product">
+            Product <span class="required">*</span>
+        </label>
+        <select class="field-select" id="id_product" name="product" autofocus>
+            <option value="">Select a product…</option>
+            {% for opt in product_options %}
+            <option value="{{ opt.val }}" data-stock="{{ opt.stock }}" data-price="{{ opt.price }}">{{ opt.label }}
+            </option>
+            {% endfor %}
+        </select>
+        <span class="stock-hint" id="stock-hint"></span>
+    </div>
+
+    <!-- Quantity Sold -->
+    <div class="field-group">
+        <label class="field-label" for="id_quantity_sold">
+            Quantity Sold <span class="required">*</span>
+        </label>
+        <div class="input-suffix-wrap">
+            <input type="number" class="field-input" id="id_quantity_sold" name="quantity_sold" min="1" placeholder="0">
+            <span class="input-suffix">Units</span>
+        </div>
+    </div>
+
+    <!-- Sale Price -->
+    <div class="field-group">
+        <label class="field-label" for="id_sale_price">
+            Sale Price <span class="required">*</span>
+        </label>
+        <div class="input-suffix-wrap">
+            <input type="number" class="field-input" id="id_sale_price" name="sale_price" min="0" step="0.01"
+                placeholder="0.00">
+            <span class="input-suffix">KES</span>
+        </div>
+    </div>
+
+    <hr class="form-divider">
+
+    <!-- Total preview -->
+    <div class="field-group">
+        <label class="field-label">Total Sale Value</label>
+        <div class="input-suffix-wrap">
+            <input type="text" class="field-input" id="id_total_value" placeholder="—" disabled
+                style="font-weight:600; color:var(--text);">
+            <span class="input-suffix">KES</span>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="form-footer">
+        <p class="footer-note">Fields marked <span>*</span> are required.</p>
+        <div class="footer-actions">
+            <a href="{% url 'core:product_list' %}" class="btn-cancel">Cancel</a>
+            <button type="button" class="btn-submit" id="submit-btn" onclick="submitSale()">
+                <svg width="15" height="15" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2.5">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+                Record Sale
+            </button>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+
+        const productSelect = document.getElementById('id_product');
+        const qtyInput = document.getElementById('id_quantity_sold');
+        const priceInput = document.getElementById('id_sale_price');
+        const totalInput = document.getElementById('id_total_value');
+        const stockHint = document.getElementById('stock-hint');
+        const successBanner = document.getElementById('success-banner');
+        const successMsg = document.getElementById('success-msg');
+        const errorBanner = document.getElementById('error-banner');
+        const errorMsg = document.getElementById('error-msg');
+        const submitBtn = document.getElementById('submit-btn');
+
+        /* ── Stock hint when product changes ── */
+        productSelect.addEventListener('change', function () {
+            const opt = this.options[this.selectedIndex];
+            const stock = parseInt(opt.dataset.stock || '0');
+            const price = opt.dataset.price || '';
+
+            // Auto-fill sale price from product's unit price
+            if (price && priceInput.value === '') {
+                priceInput.value = parseFloat(price).toFixed(2);
+            }
+
+            // Show stock level hint
+            if (!opt.value) {
+                stockHint.textContent = '';
+                stockHint.className = 'stock-hint';
+            } else if (stock === 0) {
+                stockHint.textContent = 'Out of stock — cannot record a sale.';
+                stockHint.className = 'stock-hint out';
+            } else if (stock <= 10) {
+                stockHint.textContent = 'Low stock — ' + stock + ' units remaining.';
+                stockHint.className = 'stock-hint low';
+            } else {
+                stockHint.textContent = stock + ' units in stock.';
+                stockHint.className = 'stock-hint ok';
+            }
+
+            updateTotal();
+        });
+
+        /* ── Live total calculation ── */
+        function updateTotal() {
+            const qty = parseFloat(qtyInput.value) || 0;
+            const price = parseFloat(priceInput.value) || 0;
+            if (qty > 0 && price > 0) {
+                totalInput.value = (qty * price).toFixed(2);
+            } else {
+                totalInput.value = '';
+                totalInput.placeholder = '—';
+            }
+        }
+
+        qtyInput.addEventListener('input', updateTotal);
+        priceInput.addEventListener('input', updateTotal);
+
+        /* ── Banner helpers ── */
+        function showSuccess(message) {
+            errorBanner.classList.remove('show');
+            successMsg.textContent = message;
+            successBanner.classList.add('show');
+            // Scroll to top of card
+            successBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function showError(message) {
+            successBanner.classList.remove('show');
+            errorMsg.textContent = message;
+            errorBanner.classList.add('show');
+            errorBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function hideBanners() {
+            successBanner.classList.remove('show');
+            errorBanner.classList.remove('show');
+        }
+
+        /* ── Form reset after successful sale ── */
+        function resetForm() {
+            productSelect.value = '';
+            qtyInput.value = '';
+            priceInput.value = '';
+            totalInput.value = '';
+            stockHint.textContent = '';
+            stockHint.className = 'stock-hint';
+            productSelect.focus();
+        }
+
+        /* ── Submit via fetch to JSON API ── */
+        window.submitSale = function () {
+            hideBanners();
+
+            const productId = productSelect.value;
+            const qtySold = qtyInput.value;
+            const salePrice = priceInput.value;
+
+            // Basic client-side validation
+            if (!productId) {
+                showError('Please select a product.');
+                productSelect.focus();
+                return;
+            }
+            if (!qtySold || parseInt(qtySold) <= 0) {
+                showError('Please enter a valid quantity greater than zero.');
+                qtyInput.focus();
+                return;
+            }
+            if (!salePrice || parseFloat(salePrice) < 0) {
+                showError('Please enter a valid sale price.');
+                priceInput.focus();
+                return;
+            }
+
+            // Disable button while submitting
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Recording…';
+
+            fetch("{% url 'core:sale_create' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({
+                    product: parseInt(productId),
+                    quantity_sold: parseInt(qtySold),
+                    sale_price: parseFloat(salePrice),
+                }),
+            })
+                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+                .then(function (result) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<svg width="15" height="15" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Record Sale';
+
+                    if (result.ok) {
+                        const d = result.data;
+                        showSuccess(
+                            'Sale recorded — ' + d.quantity_sold + ' unit(s) sold. ' +
+                            'Total: KES ' + parseFloat(d.total_sale_value).toLocaleString('en-KE', { minimumFractionDigits: 2 }) + '. ' +
+                            'Updated stock: ' + d.updated_stock_level + ' units remaining.'
+                        );
+                        // Update the stock hint for the same product
+                        const selectedOpt = productSelect.options[productSelect.selectedIndex];
+                        if (selectedOpt) {
+                            selectedOpt.dataset.stock = d.updated_stock_level;
+                        }
+                        resetForm();
+                    } else {
+                        showError(result.data.error || 'An unexpected error occurred.');
+                    }
+                })
+                .catch(function () {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<svg width="15" height="15" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Record Sale';
+                    showError('Network error — please check your connection and try again.');
+                });
+        };
+
+    })();
+</script>
+{% endblock %}

@@ -41,13 +41,13 @@
       </a>
 
       <div class="nav-section">Sales</div>
-      <a href="#" class="nav-item {% block nav_sales %}{% endblock %}">
+      <a href="{% url 'core:sales_form' %}" class="nav-item {% block nav_sales %}{% endblock %}">
         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
           <path d="M9 17H5a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v0a2 2 0 0 0-2-2h-4" />
           <path d="M12 3v14" />
           <path d="m8 7 4-4 4 4" />
         </svg>
-        Sales Report
+        Record Sales
       </a>
 
       <div class="nav-section">Inventory</div>
@@ -112,6 +112,7 @@
           <polyline points="14 2 14 8 20 8" />
         </svg>
         Forecast Report
+        Sales Report
       </a>
 
       {% if user.is_staff %}

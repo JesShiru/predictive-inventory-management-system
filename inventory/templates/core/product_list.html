@@ -1,58 +1,245 @@
 {% extends 'core/base.html' %}
+{% load static %}
 
-{% block title %}Products - Shefa Dairies Inventory{% endblock %}
+{% block title %}Products{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/product_list.css' %}">
+{% endblock %}{# extra_head #}
+
 {% block nav_products %}active{% endblock %}
 
-{% block page_title %}<h2>Products</h2>{% endblock %}
-
 {% block content %}
-<div class="actions-bar"
-  style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-  <a href="{% url 'core:product_create' %}" class="btn"
-    style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: 500;">+
-    Add Product</a>
+
+<!-- Header -->
+<div class="pv-header">
+  <div>
+    <div class="pv-breadcrumb">
+      <a href="#">Inventory</a> &rsaquo; <span>Products</span>
+    </div>
+    <h1 class="pv-title">Products</h1>
+  </div>
+  <a href="{% url 'core:product_create' %}" class="btn-add">
+    <svg width="15" height="15" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+      stroke-width="2.5">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+    Add Inventory
+  </a>
 </div>
 
-<div class="table-card"
-  style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow-x: auto;">
-  <table style="width: 100%; border-collapse: collapse;">
-    <thead>
-      <tr style="border-bottom: 2px solid #eee; text-align: left;">
-        <th style="padding: 12px; font-weight: 600;">Item No</th>
-        <th style="padding: 12px; font-weight: 600;">Name</th>
-        <th style="padding: 12px; font-weight: 600;">Category</th>
-        <th style="padding: 12px; font-weight: 600;">Stock Qty</th>
-        <th style="padding: 12px; font-weight: 600;">Price</th>
-        <th style="padding: 12px; font-weight: 600; text-align: right;">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for product in products %}
-      <tr style="border-bottom: 1px solid #eee;">
-        <td style="padding: 12px;">{{ product.item_no|default:"-" }}</td>
-        <td style="padding: 12px;">{{ product.name }}</td>
-        <td style="padding: 12px;">{{ product.category.name|default:"-" }}</td>
-        {% if product.stock_quantity == 0 %}
-        <td style="padding: 12px; font-weight: 600; color: #dc2626;">{{ product.stock_quantity }}</td>
-        {% elif product.stock_quantity <= product.reorder_level %} <td
-          style="padding: 12px; font-weight: 600; color: #d97706;">{{ product.stock_quantity }}</td>
-          {% else %}
-          <td style="padding: 12px; font-weight: 600; color: #16a34a;">{{ product.stock_quantity }}</td>
-          {% endif %}
-          <td style="padding: 12px;">KES {{ product.unit_price }}</td>
-          <td style="padding: 12px; text-align: right;">
-            <a href="{% url 'core:product_update' product.pk %}"
-              style="color: #2563eb; margin-right: 15px; text-decoration: none; font-weight: 500;">Edit</a>
-            <a href="{% url 'core:product_delete' product.pk %}"
-              style="color: #dc2626; text-decoration: none; font-weight: 500;">Delete</a>
-          </td>
-      </tr>
-      {% empty %}
-      <tr>
-        <td colspan="6" style="padding: 20px; text-align: center; color: #666;">No products found.</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<!-- Summary Cards -->
+<div class="pv-summary">
+  <div class="summary-card">
+    <div class="summary-icon total">
+      <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" />
+        <path d="M16 3H8l-2 4h12l-2-4z" />
+      </svg>
+    </div>
+    <div>
+      <div class="summary-label">Total Products</div>
+      <div class="summary-value">{{ total_products }}</div>
+    </div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-icon low">
+      <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      </svg>
+    </div>
+    <div>
+      <div class="summary-label">Low Stock</div>
+      <div class="summary-value">{{ low_stock_count }}</div>
+    </div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-icon out">
+      <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+      </svg>
+    </div>
+    <div>
+      <div class="summary-label">Out of Stock</div>
+      <div class="summary-value">{{ out_of_stock_count }}</div>
+    </div>
+  </div>
 </div>
+
+<!-- Filters -->
+<form method="get" action="">
+  <div class="filter-card">
+
+    <div class="filter-group">
+      <label class="filter-label" for="f-category">Category</label>
+      <select class="filter-select" id="f-category" name="category">
+        <option value="">All Categories</option>
+        {% for opt in category_options %}
+        <option value="{{ opt.value }}" {% if opt.selected %} selected{% endif %}>{{ opt.value }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label" for="f-location">Location</label>
+      <select class="filter-select" id="f-location" name="location">
+        <option value="">All Locations</option>
+        {% for opt in location_options %}
+        <option value="{{ opt.value }}" {% if opt.selected %} selected{% endif %}>{{ opt.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label class="filter-label" for="f-status">Stock Status</label>
+      <select class="filter-select" id="f-status" name="status">
+        <option value="">All Stock</option>
+        {% for opt in status_options %}
+        <option value="{{ opt.value }}" {% if opt.selected %} selected{% endif %}>{{ opt.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="btn-filter">
+      <svg width="13" height="13" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+      </svg>
+      Filter
+    </button>
+
+  </div>
+</form>
+
+<!-- Products Table -->
+<div class="table-card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Product Details</th>
+          <th>Category</th>
+          <th>In Stock</th>
+          <th>Location</th>
+          <th>Unit Price</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for product in products %}
+        <tr>
+          <td>
+            <div class="prod-cell">
+              <div class="prod-avatar">📦</div>
+              <div>
+                <div class="prod-name">{{ product.name }}</div>
+                <div class="prod-sku">SKU: {{ product.item_no|default:"—" }}</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="pill">{{ product.category }}</span></td>
+          <td>
+            <span class="stock-qty">{{ product.stock_quantity }}</span>
+            <span class="stock-unit">Units</span>
+          </td>
+          <td>
+            <div class="location-cell">
+              <svg width="12" height="12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {{ product.get_stock_location_display }}
+            </div>
+          </td>
+          <td style="font-size:.875rem; font-weight:600; color:var(--text);">
+            KES {{ product.unit_price|floatformat:2 }}
+          </td>
+          <td>
+            {% if product.stock_quantity == 0 %}
+            <span class="badge badge-out">Out of Stock</span>
+            {% elif product.stock_quantity <= product.reorder_level %} <span class="badge badge-low">Low Stock</span>
+              {% else %}
+              <span class="badge badge-in">In Stock</span>
+              {% endif %}
+          </td>
+          <td class="actions-cell">
+            <button class="btn-actions" onclick="toggleDropdown(this)" type="button">
+              <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="5" r="1.5" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="12" cy="19" r="1.5" />
+              </svg>
+            </button>
+            <div class="dropdown-menu">
+              <a href="{% url 'core:product_update' product.pk %}">
+                <svg width="13" height="13" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor" stroke-width="2">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                Edit
+              </a>
+              <form method="post" action="{% url 'core:product_delete' product.pk %}"
+                onsubmit="return confirm('Delete {{ product.name }}? This cannot be undone.')">
+                {% csrf_token %}
+                <button type="submit" class="danger">
+                  <svg width="13" height="13" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14H6L5 6" />
+                    <path d="M10 11v6m4-6v6" />
+                    <path d="M9 6V4h6v2" />
+                  </svg>
+                  Delete
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7">
+            <div class="empty-state">
+              <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="1.5">
+                <path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" />
+                <path d="M16 3H8l-2 4h12l-2-4z" />
+              </svg>
+              <p>No products found. Try adjusting your filters or <a href="{% url 'core:product_create' %}"
+                  style="color:var(--blue); font-weight:600;">add a new product</a>.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function toggleDropdown(btn) {
+    const menu = btn.nextElementSibling;
+    document.querySelectorAll('.dropdown-menu.open').forEach(m => {
+      if (m !== menu) m.classList.remove('open');
+    });
+    menu.classList.toggle('open');
+  }
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.actions-cell')) {
+      document.querySelectorAll('.dropdown-menu.open').forEach(m => m.classList.remove('open'));
+    }
+  });
+</script>
 {% endblock %}

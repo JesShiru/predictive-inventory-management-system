@@ -9,7 +9,7 @@ class ProductForm(forms.ModelForm):
         fields = [
             'item_no', 'name', 'category', 'supplier',
             'stock_location', 'unit_price', 'stock_quantity',
-            'packing_as_per_plan', 'reorder_level',
+            'reorder_level',
             'date_of_last_restocking'
         ]
         widgets = {
@@ -17,7 +17,6 @@ class ProductForm(forms.ModelForm):
             'unit_price': forms.NumberInput(attrs={'min': 0, 'step': '0.01'}), 
             'stock_quantity': forms.NumberInput(attrs={'min': 0}),
             'reorder_level': forms.NumberInput(attrs={'min': 0}),
-            'packing_as_per_plan': forms.NumberInput(attrs={'min': 0}),
 }
 
 class SaleForm(forms.ModelForm):

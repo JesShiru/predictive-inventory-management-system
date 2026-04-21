@@ -1,0 +1,429 @@
+/* Page header */
+.pv-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+}
+
+.pv-breadcrumb {
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: .3rem;
+}
+
+.pv-breadcrumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+.pv-breadcrumb span {
+    color: var(--blue);
+}
+
+.pv-title {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -.02em;
+    margin: 0;
+}
+
+/* Add Inventory button */
+.btn-add {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    background: var(--blue);
+    color: #fff;
+    font-size: .82rem;
+    font-weight: 600;
+    padding: .6rem 1.2rem;
+    border-radius: 8px;
+    text-decoration: none;
+    box-shadow: 0 3px 10px rgba(59, 91, 219, .25);
+    transition: background .18s, transform .15s;
+    font-family: 'DM Sans', sans-serif;
+}
+
+.btn-add:hover {
+    background: var(--blue-dark);
+    transform: translateY(-1px);
+}
+
+/*cards */
+.pv-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.summary-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.summary-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.summary-icon.total {
+    background: var(--blue-light);
+    color: var(--blue);
+}
+
+.summary-icon.low {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.summary-icon.out {
+    background: #fee2e2;
+    color: var(--red);
+}
+
+.summary-label {
+    font-size: .7rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: .2rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.summary-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+}
+
+/* Filter */
+.filter-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-end;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    flex: 1;
+    min-width: 150px;
+}
+
+.filter-label {
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.filter-select {
+    appearance: none;
+    background: var(--body-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right .8rem center;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    padding: .55rem 2rem .55rem .8rem;
+    font-size: .82rem;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: border-color .15s;
+    width: 100%;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--blue);
+}
+
+.btn-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    background: var(--text);
+    color: #fff;
+    font-size: .82rem;
+    font-weight: 600;
+    padding: .57rem 1.2rem;
+    border-radius: 7px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: background .18s;
+    white-space: nowrap;
+}
+
+.btn-filter:hover {
+    background: #2d3452;
+}
+
+/* Table wrapper */
+.table-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+/* Override base table styles for this page */
+thead tr {
+    background: var(--body-bg);
+}
+
+thead th {
+    padding: 10px 16px;
+}
+
+tbody td {
+    padding: 12px 16px;
+    vertical-align: middle;
+}
+
+/* Product cell */
+.prod-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.prod-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 7px;
+    background: var(--body-bg);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1rem;
+}
+
+.prod-name {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: .1rem;
+}
+
+.prod-sku {
+    font-size: .72rem;
+    color: var(--text-muted);
+}
+
+/* Category pill */
+.pill {
+    display: inline-block;
+    padding: .25rem .7rem;
+    border-radius: 99px;
+    font-size: .72rem;
+    font-weight: 500;
+    background: var(--blue-light);
+    color: var(--blue);
+    border: 1px solid #c7d4f8;
+}
+
+/* Stock quantity */
+.stock-qty {
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.stock-unit {
+    font-size: .72rem;
+    color: var(--text-muted);
+    margin-left: .2rem;
+}
+
+/* Location cell */
+.location-cell {
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    font-size: .82rem;
+    color: var(--text-muted);
+}
+
+/* Status badges */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .25rem .7rem;
+    border-radius: 99px;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.badge::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.badge-in {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-in::before {
+    background: #059669;
+}
+
+.badge-low {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.badge-low::before {
+    background: #d97706;
+}
+
+.badge-out {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-out::before {
+    background: var(--red);
+}
+
+/* Actions dropdown */
+.actions-cell {
+    position: relative;
+}
+
+.btn-actions {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: .3rem .45rem;
+    border-radius: 6px;
+    color: var(--text-muted);
+    transition: background .15s, color .15s;
+    display: flex;
+    align-items: center;
+}
+
+.btn-actions:hover {
+    background: var(--body-bg);
+    color: var(--text);
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .1);
+    z-index: 100;
+    min-width: 120px;
+    overflow: hidden;
+}
+
+.dropdown-menu.open {
+    display: block;
+}
+
+.dropdown-menu a,
+.dropdown-menu button {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    width: 100%;
+    padding: .55rem .9rem;
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--text);
+    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: background .12s;
+    text-align: left;
+}
+
+.dropdown-menu a:hover,
+.dropdown-menu button:hover {
+    background: var(--body-bg);
+}
+
+.dropdown-menu .danger {
+    color: var(--red);
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--text-muted);
+}
+
+.empty-state svg {
+    opacity: .3;
+    margin-bottom: .75rem;
+    display: block;
+    margin-inline: auto;
+}
+
+.empty-state p {
+    font-size: .82rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .pv-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .pv-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .filter-card {
+        flex-direction: column;
+    }
+}
