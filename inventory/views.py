@@ -249,3 +249,15 @@ def sale_form_view(request):
     return render(request, 'core/sales_form.html', {
         'product_options': product_options,
     })
+
+# out of stock view
+@login_required
+def out_of_stock_view(request):
+    out_of_stock = Product.objects.select_related('category', 'supplier').filter(stock_quantity=0)
+    return render(request, 'core/out_of_stock.html', {'products': out_of_stock, 'count': out_of_stock.count()})
+
+# low stock view
+@login_required
+def low_stock_view(request):
+    low_stock = Product.objects.select_related('category', 'supplier').filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level'))
+    return render(request, 'core/low_stock.html', {'products': low_stock, 'count': low_stock.count()})

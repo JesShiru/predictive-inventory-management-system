@@ -218,19 +218,6 @@ tbody td {
     gap: 10px;
 }
 
-.prod-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 7px;
-    background: var(--body-bg);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-size: 1rem;
-}
-
 .prod-name {
     font-size: .85rem;
     font-weight: 600;

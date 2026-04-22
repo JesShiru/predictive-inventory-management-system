@@ -15,4 +15,10 @@ urlpatterns = [
     # sales API endpoint
     path('sales/new/', views.sale_form_view, name='sales_form'),
     path('sales/create/', views.sale_create, name='sale_create'),
+
+    # out of stock
+    path('out-of-stock/', views.out_of_stock_view, name='out_of_stock'),
+
+    # low stock
+    path('low-stock/', views.low_stock_view, name='low_stock'),
 ]

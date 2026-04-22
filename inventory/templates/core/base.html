@@ -58,13 +58,13 @@
         </svg>
         Products
       </a>
-      <a href="#" class="nav-item {% block nav_outofstock %}{% endblock %}">
+      <a href="{% url 'core:out_of_stock' %}" class="nav-item {% block nav_outofstock %}{% endblock %}">
         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
         </svg>
         Out of Stock
       </a>
-      <a href="#" class="nav-item {% block nav_lowstock %}{% endblock %}">
+      <a href="{% url 'core:low_stock' %}" class="nav-item {% block nav_lowstock %}{% endblock %}">
         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
           <line x1="12" y1="9" x2="12" y2="13" />
