@@ -36,7 +36,7 @@ def clean_date(value):
     if pd.isna(value) or value == "":
         return None
     try:
-        # Matches the 4/2/2026 format 
+        
         return datetime.strptime(str(value), '%d/%m/%Y').date()
     except ValueError:
         return None
@@ -56,7 +56,7 @@ def import_inventory(file_path, category_name):
             print("Skipping a row with a missing Item Name.")
             continue 
 
-        # Force item_name to be a string to avoid the 'float' error
+
         item_name = str(item_name).strip()
 
         if not raw_item_no:
@@ -84,6 +84,5 @@ def import_inventory(file_path, category_name):
     print(f"Successfully imported {category_name} items.")
 
 if __name__ == "__main__":
-    # Update these filenames to match your local files
     import_inventory('yoghurt.csv', 'Yoghurt')
     import_inventory('raw_materials.csv', 'Raw Materials')

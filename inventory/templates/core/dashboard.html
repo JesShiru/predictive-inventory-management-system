@@ -10,13 +10,6 @@
 
 {% block content %}
 
-<!-- Chart data passed cleanly to JS -->
-<script id="chart-data" type="application/json">
-  {
-    "labels": {{ sales_labels|safe }},
-    "data": {{ sales_data|safe }}
-  }
-</script>
 
 <!-- STAT CARDS -->
 <div class="stat-grid">
@@ -70,7 +63,7 @@
     </div>
     <div class="card-body">
       <div class="chart-wrap">
-        <canvas id="salesChart"></canvas>
+        <canvas id="salesTrendChart"></canvas>
       </div>
     </div>
   </div>
@@ -193,7 +186,7 @@
       </svg>
       Generate Forecasts
     </a>
-    <a href="#" class="quick-btn outline">
+    <a href="{% url 'core:product_create' %}" class="quick-btn outline">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <line x1="12" y1="5" x2="12" y2="19" />
         <line x1="5" y1="12" x2="19" y2="12" />
@@ -215,47 +208,87 @@
 
 {% block extra_js %}
 <script>
-  const chartData = JSON.parse(document.getElementById('chart-data').textContent);
-  const labels = chartData.labels;
-  const data = chartData.data;
+  /*--- Sales Trend Chart ---*/
+  (function () {
+    const canvas = document.getElementById('salesTrendChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
 
-  const ctx = document.getElementById('salesChart').getContext('2d');
+    // Loading state
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '13px DM Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Loading chart...', canvas.width / 2, canvas.height / 2);
 
-  new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Units Sold',
-        data: data,
-        borderColor: '#3B5BDB',
-        backgroundColor: 'rgba(59,91,219,0.08)',
-        borderWidth: 2,
-        pointRadius: 3,
-        tension: 0.4,
-        fill: true,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          labels: { font: { family: 'DM Sans', size: 11 }, color: '#6b7280' }
+    fetch("{% url 'core:dashboard_chart_data' %}")
+      .then(r => r.json())
+      .then(function (data) {
+
+        if (!data.labels || data.labels.length === 0) {
+          ctx.fillStyle = '#6b7280';
+          ctx.font = '12px DM Sans, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(
+            'No sales data available',
+            canvas.width / 2,
+            canvas.height / 2
+          );
+          return;
         }
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: { font: { family: 'DM Sans', size: 10 }, color: '#9ca3af' }
-        },
-        y: {
-          beginAtZero: true,
-          grid: { color: '#f0f0f0' },
-          ticks: { font: { family: 'DM Sans', size: 10 }, color: '#9ca3af' }
-        }
-      }
-    }
-  });
+
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.labels,
+            datasets: [{
+              label: 'Daily Revenue (KES)',
+              data: data.data,
+              borderColor: '#ffffff',
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              borderWidth: 2,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              fill: true,
+              tension: 0.4,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: ctx => 'KES ' + ctx.parsed.y.toLocaleString('en-KE', { minimumFractionDigits: 2 })
+                }
+              }
+            },
+            scales: {
+              x: {
+                ticks: {
+                  maxTicksLimit: 6,
+                  color: 'rgba(255,255,255,0.7)',
+                  font: { size: 10 }
+                },
+                grid: { display: false }
+              },
+              y: {
+                ticks: {
+                  color: 'rgba(255,255,255,0.7)',
+                  font: { size: 10 },
+                  callback: val => 'KES ' + val.toLocaleString()
+                },
+                grid: { color: 'rgba(255,255,255,0.1)' }
+              }
+            }
+          }
+        });
+      })
+      .catch(() => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillText('Chart unavailable', canvas.width / 2, canvas.height / 2);
+      });
+  })();
+
 </script>
 {% endblock %}

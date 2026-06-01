@@ -68,7 +68,7 @@ body {
   background: var(--blue);
   color: white;
   font-family: 'DM Serif Display', serif;
-  font-size: 1rem;
+  font-size: 0.8rem;
   padding: 6px 10px;
   border-radius: 8px;
   flex-shrink: 0;
@@ -81,16 +81,16 @@ body {
 
 .logo-text {
   color: white;
-  font-weight: 600;
-  font-size: 1.9rem;
+  font-weight: 200;
+  font-size: 1.2rem;
   line-height: 1.3;
   white-space: nowrap;
 }
 
 .logo-text small {
   display: block;
-  font-weight: 300;
-  font-size: 1.5rem;
+  font-weight: 100;
+  font-size: 1.4rem;
   color: var(--sidebar-text);
   letter-spacing: 0.04em;
 }
@@ -104,7 +104,7 @@ body {
 .nav-section {
   padding: 14px 20px 6px;
   font-size: 0.65rem;
-  font-weight: 600;
+  font-weight: 200;
   color: var(--sidebar-section);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -118,8 +118,8 @@ body {
   padding: 9px 20px;
   color: var(--sidebar-text);
   text-decoration: none;
-  font-size: 1.9rem;
-  font-weight: 400;
+  font-size: 0.9rem;
+  font-weight: 200;
   border-left: 3px solid transparent;
   transition: all 0.15s ease;
   white-space: nowrap;
@@ -797,4 +797,8 @@ tbody tr:hover {
 .chart-wrap {
   position: relative;
   height: 220px;
+}
+
+.alert-row {
+  background: #fff5f5;
 }

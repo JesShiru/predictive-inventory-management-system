@@ -21,4 +21,18 @@ urlpatterns = [
 
     # low stock
     path('low-stock/', views.low_stock_view, name='low_stock'),
+
+    # sales report page
+    path('sales-report/', views.sales_report, name='sales_report'),
+    
+    # dashboard chart data
+    path('api/dashboard-chart-data/', views.dashboard_chart_data, name='dashboard_chart_data'),
+
+    # download pdf report
+    path('download-pdf-report/', views.download_pdf_report, name='download_pdf_report'),
+
+    #forecast
+    path("generate-forecast/", views.generate_forecast, name="generate_forecast"),
+    path("forecast-patterns/", views.forecast_patterns, name="forecast_patterns"),
+    path("forecast-results/", views.view_forecast_results, name="view_forecast_results"),
 ]

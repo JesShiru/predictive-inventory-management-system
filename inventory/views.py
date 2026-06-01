@@ -4,15 +4,19 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from django.contrib import messages
 from django.views import View
-from django.db.models import Sum
+from django.db.models import Sum, Avg
 from django.utils import timezone
 from datetime import timedelta
 from django.db import transaction
 import json
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
-from .models import Product, Sale, StockMovement, Order
+from .models import Product, Sale, StockMovement, Order, DemandForecast
 from .forms import ProductForm, SaleForm, RegisterForm
+import subprocess
+import os
+from django.views.decorators.http import require_POST
+
 
 # Registration view
 class RegisterView(View):
@@ -57,13 +61,13 @@ def dashboard(request):
     daily_sales = (
         Sale.objects
         .filter(date__gte=thirty_days_ago)
-        .values('date__date')
+        .values('date')
         .annotate(total=Sum('quantity_sold'))
-        .order_by('date__date')
+        .order_by('date')
     )
 
     
-    sales_labels = [str(s['date__date']) for s in daily_sales]
+    sales_labels = [str(s['date']) for s in daily_sales]
     sales_data = [s['total'] for s in daily_sales]
 
     context = {
@@ -261,3 +265,273 @@ def out_of_stock_view(request):
 def low_stock_view(request):
     low_stock = Product.objects.select_related('category', 'supplier').filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level'))
     return render(request, 'core/low_stock.html', {'products': low_stock, 'count': low_stock.count()})
+
+# Sales report view
+# Import your analytics engine
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+@login_required
+def sales_report(request):
+    """
+    Renders the full sales report page.
+    Supports optional date filtering via GET params: ?start=YYYY-MM-DD&end=YYYY-MM-DD
+    """
+    from analytics import full_report, get_engine
+    import pandas as pd
+    from datetime import date, timedelta
+
+    from analytics import (
+        load_dataframe, summary_statistics, top_products,
+        daily_trend, last_7_days, stock_turnover
+    )
+
+    start_date = request.GET.get("start", "")
+    end_date   = request.GET.get("end",   "")
+    turnover_days = int(request.GET.get("turnover_days", 90))
+    turnover_end = date.today()
+    turnover_start = turnover_end - timedelta(days=turnover_days)
+
+    try:
+        engine = get_engine()
+        df     = load_dataframe(engine)
+        turnover = stock_turnover(engine, start_date=turnover_start, end_date=turnover_end)
+
+        if df.empty:
+            return render(request, "core/sales_report.html", {"error": True})
+
+        # Apply date filters 
+        if start_date:
+            df = df[df["date"] >= pd.to_datetime(start_date)]
+        if end_date:
+            df = df[df["date"] <= pd.to_datetime(end_date)]
+
+        report = {
+            "summary":      summary_statistics(df),
+            "top_products": top_products(df, n=10),
+            "daily_trend":  daily_trend(df),
+            "last_7_days":  last_7_days(df),
+            "turnover":     turnover,
+            "turnover_days": turnover_days,
+            "turnover_start": str(turnover_start),
+            "turnover_end": str(turnover_end),
+            "turnover_options": [
+                {"value": 30,  "label": "30 days",           "selected": turnover_days == 30},
+                {"value": 60,  "label": "60 days",           "selected": turnover_days == 60},
+                {"value": 90,  "label": "90 days",           "selected": turnover_days == 90},
+                {"value": 180, "label": "180 days",          "selected": turnover_days == 180},
+                {"value": 365, "label": "1 year",            "selected": turnover_days == 365},
+                {"value": 730, "label": "Full history (2 years)", "selected": turnover_days == 730},
+],
+            # Pass as JSON for Chart.js
+            "chart_labels":  json.dumps([d["date"]    for d in daily_trend(df)]),
+            "chart_revenue": json.dumps([d["revenue"] for d in daily_trend(df)]),
+            "start_date":    start_date,
+            "end_date":      end_date,
+        }
+
+        return render(request, "core/sales_report.html", report)
+
+    except Exception as e:
+        return render(request, "core/sales_report.html", {
+            "error": True,
+            "error_message": str(e),
+        })
+    
+
+
+# DASHBOARD CHART DATA (JSON endpoint)
+
+@login_required
+def dashboard_chart_data(request):
+    from analytics import load_dataframe, last_30_days_trend, get_engine 
+    try:
+        engine = get_engine()
+        df     = load_dataframe(engine)
+
+        if df.empty:
+            return JsonResponse({"labels": [], "data": []})
+
+        trend = last_30_days_trend(df)
+        return JsonResponse({
+            "labels": [d["date"]    for d in trend],
+            "data":   [d["revenue"] for d in trend],
+        })
+
+    except Exception as e:
+        import traceback
+        print("DASHBOARD CHART ERROR:", traceback.format_exc())
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+# pdf download
+@login_required
+def download_pdf_report(request):
+    """
+    Generates and streams the PDF sales report as a download.
+    """
+    import tempfile
+    from generate_pdf import generate_pdf
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pdf", delete=False, prefix="shefa_sales_"
+        ) as tmp:
+            tmp_path = tmp.name
+
+        generate_pdf(output_path=tmp_path)
+
+        with open(tmp_path, "rb") as f:
+            pdf_data = f.read()
+
+        os.unlink(tmp_path)
+
+        from datetime import date
+        filename = f"shefa_sales_report_{date.today()}.pdf"
+        response = HttpResponse(pdf_data, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    except Exception as e:
+        return HttpResponse(f"PDF generation failed: {e}", status=500)
+
+# generate_forecast view
+@login_required
+@require_POST
+def generate_forecast(request):
+    """
+    Triggers LSTM training and forecast generation.
+    Redirects to forecast results on completion.
+    """
+    import sys
+    sys.path.insert(0, os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))
+    ))
+
+    try:
+        from forecast_engine import run_forecast
+        summary = run_forecast()
+
+        request.session["forecast_summary"] = summary
+        messages.success(
+            request,
+            f"Forecast complete. "
+            f"{summary['products_processed']} products processed, "
+            f"{summary['total_records']} records saved."
+        )
+    except Exception as e:
+        messages.error(request, f"Forecast failed: {e}")
+
+    return redirect("core:view_forecast_results")
+
+# forecast_patterns view
+@login_required
+def forecast_patterns(request):
+    from datetime import date
+    from django.db.models import Sum
+
+    today = date.today()
+
+    chart_data = {
+        "90_days": {
+            "end": today + timedelta(days=90)
+        },
+        "6_months": {
+            "end": today + timedelta(days=180)
+        },
+        "1_year": {
+            "end": today + timedelta(days=365)
+        },
+    }
+
+    for label, meta in chart_data.items():
+        daily = (
+            DemandForecast.objects
+            .filter(
+                product__category__name="Yoghurt",
+                forecast_date__gte=today,
+                forecast_date__lte=meta["end"],  # ← date range only, no notes filter
+            )
+            .values("forecast_date")
+            .annotate(total=Sum("forecasted_quantity"))
+            .order_by("forecast_date")
+        )
+        chart_data[label] = {
+            "labels": [str(d["forecast_date"]) for d in daily],
+            "data":   [d["total"]              for d in daily],
+        }
+
+    context = {
+        "chart_90":      json.dumps(chart_data["90_days"]),
+        "chart_6m":      json.dumps(chart_data["6_months"]),
+        "chart_1y":      json.dumps(chart_data["1_year"]),
+        "has_forecasts": DemandForecast.objects.exists(),
+    }
+
+    return render(request, "core/forecast_patterns.html", context)
+
+# forecast_result view
+@login_required
+def view_forecast_results(request):
+    try:
+        from datetime import date
+        from django.db.models import Max, Sum, Avg
+
+        today = date.today()
+        products = Product.objects.filter(category__name="Yoghurt")
+
+        results = []
+        for product in products:
+            forecasts = DemandForecast.objects.filter(
+                product=product,
+                forecast_date__gte=today,
+            )
+
+            if not forecasts.exists():
+                continue
+
+            total_forecasted = forecasts.aggregate(t=Sum("forecasted_quantity"))["t"] or 0
+            avg_daily = forecasts.aggregate(a=Avg("forecasted_quantity"))["a"] or 0
+            alert_count = forecasts.filter(notes__icontains="RESTOCK ALERT").count()
+            latest_alert = (
+                forecasts
+                .filter(notes__icontains="RESTOCK ALERT")
+                .order_by("-forecast_date")
+                .values_list("notes", flat=True)
+                .first()
+            )
+
+            results.append({
+                "product":          product,
+                "current_stock":    product.stock_quantity,
+                "total_forecasted": total_forecasted,
+                "avg_daily":        round(avg_daily, 1),
+                "alert_count":      alert_count,
+                "latest_alert":     latest_alert,
+                "has_alerts":       alert_count > 0,
+                "row_class":        "alert-row" if alert_count > 0 else "",
+            })
+
+        results.sort(key=lambda x: x["has_alerts"], reverse=True)
+        forecast_summary = request.session.pop("forecast_summary", None)
+
+        context = {
+            "results":          results,
+            "forecast_summary": forecast_summary,
+            "total_alerts":     sum(r["alert_count"] for r in results),
+            "last_forecast":    DemandForecast.objects.aggregate(
+                                    m=Max("forecast_date"))["m"],
+        }
+
+        return render(request, "core/view_forecast_results.html", context)
+
+    except Exception as e:
+        # Log the actual error
+        import traceback
+        print("FORECAST RESULTS ERROR:", traceback.format_exc())
+        return render(request, "core/view_forecast_results.html", {
+            "error": True,
+            "error_message": str(e),
+            "results": [],
+            "total_alerts": 0,
+        })

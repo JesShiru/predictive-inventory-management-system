@@ -1,0 +1,165 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Forecast Patterns{% endblock %}
+{% block nav_forecast %}active{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px;">
+    <div>
+        <div class="pv-breadcrumb" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">
+            <span>Forecast</span> &rsaquo;
+            <span style="color:var(--blue);">Forecast Patterns</span>
+        </div>
+        <h1 style="font-size:1.4rem; font-weight:600; color:var(--text); letter-spacing:-0.02em;">
+            Forecast Patterns
+        </h1>
+        <p style="font-size:0.82rem; color:var(--text-muted); margin-top:4px;">
+            Yoghurt category — Predicted demand trends
+        </p>
+    </div>
+    <!-- Trigger Generate -->
+    <form method="post" action="{% url 'core:generate_forecast' %}">
+        {% csrf_token %}
+        <button type="submit" class="quick-btn primary">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+            </svg>
+            Generate New Forecast
+        </button>
+    </form>
+</div>
+
+{% if not has_forecasts %}
+<!-- Empty State -->
+<div class="card" style="padding:3rem; text-align:center;">
+    <svg width="40" height="40" fill="none" stroke="var(--text-muted)" stroke-width="1.5" viewBox="0 0 24 24"
+        style="margin:0 auto 16px;">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+        <polyline points="17 6 23 6 23 12" />
+    </svg>
+    <p style="color:var(--text-muted); font-size:0.88rem;">
+        No forecast data yet. Click <strong>Generate New Forecast</strong> to train the LSTM model.
+    </p>
+</div>
+
+{% else %}
+
+<!-- 90-Day Chart -->
+<div class="card" style="margin-bottom:18px;">
+    <div class="card-header">
+        <span class="card-title">3-month Demand Forecast</span>
+        <span style="font-size:0.75rem; color:var(--text-muted);">
+            Aggregated across all Yoghurt products
+        </span>
+    </div>
+    <div class="card-body">
+        <div style="position:relative; height:240px;">
+            <canvas id="chart3m"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- 6-Month + 1-Year side by side -->
+<div class="grid-2b" style="margin-bottom:18px;">
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">6-Month Forecast</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">~180 days</span>
+        </div>
+        <div class="card-body">
+            <div style="position:relative; height:220px;">
+                <canvas id="chart6m"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">1-Year Forecast</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">~365 days</span>
+        </div>
+        <div class="card-body">
+            <div style="position:relative; height:220px;">
+                <canvas id="chart1y"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+<!-- Data islands -->
+<script type="application/json" id="data-3m">{{ chart_3m|safe }}</script>
+<script type="application/json" id="data-6m">{{ chart_6m|safe }}</script>
+<script type="application/json" id="data-1y">{{ chart_1y|safe }}</script>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if has_forecasts %}
+<script>
+    const forecast3m = JSON.parse(document.getElementById('data-3m').textContent);
+    const forecast6m = JSON.parse(document.getElementById('data-6m').textContent);
+    const forecast1y = JSON.parse(document.getElementById('data-1y').textContent);
+
+    function buildChart(canvasId, data, label, color) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: label,
+                    data: data.data,
+                    borderColor: color,
+                    backgroundColor: color + '15',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    fill: true,
+                    tension: 0.4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.parsed.y.toLocaleString() + ' units'
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            maxTicksLimit: 10,
+                            font: { size: 10 },
+                            color: '#6b7280',
+                        },
+                        grid: { display: false }
+                    },
+                    y: {
+                        ticks: {
+                            font: { size: 10 },
+                            color: '#6b7280',
+                            callback: val => val.toLocaleString()
+                        },
+                        grid: { color: '#e5e9f5' }
+                    }
+                }
+            }
+        });
+    }
+
+    buildChart('chart3m', forecast3m, '3-Month Forecast', '#3B5BDB');
+    buildChart('chart6m', forecast6m, '6-Month Forecast', '#1a7f4b');
+    buildChart('chart1y', forecast1y, '1-Year Forecast', '#d97706');
+</script>
+{% endif %}
+{% endblock %}
