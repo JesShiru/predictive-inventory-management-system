@@ -11,18 +11,6 @@ class Category(models.Model):
     def __str__(self):
         return self.name
     
-# Supplier
-class Supplier(models.Model):
-    name = models.CharField(max_length=255)
-    email = models.EmailField()
-    phone = models.CharField(max_length=20, blank=True, null=True)
-    address = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.name
-
-
 # Product
 class Product(models.Model):
     LOCATION_CHOICES = [
@@ -33,12 +21,12 @@ class Product(models.Model):
     item_no = models.CharField(max_length=50, unique=True, blank=True, null=True)
     name = models.CharField(max_length=255)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
-    supplier = models.ForeignKey(Supplier, on_delete=models.SET_NULL, null=True, blank=True)
     stock_location = models.CharField(max_length=20, choices=LOCATION_CHOICES)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     stock_quantity = models.IntegerField(default=0)
     packing_as_per_plan = models.IntegerField(blank=True, null=True)  
     reorder_level = models.IntegerField(default=0)
+    expiry_date = models.DateField(blank=True, null=True)
     date_of_last_restocking = models.DateField(blank=True, null=True)
 
     @property
@@ -50,6 +38,14 @@ class Product(models.Model):
         if self.stock_quantity <= self.reorder_level:
             return 'RESTOCK'
         return 'OK'
+    
+    # models.py
+    @property
+    def expiry_color(self):
+        from datetime import date
+        if self.expiry_date and self.expiry_date <= date.today():
+            return "#dc2626"  # red — expired today or past
+        return "#d97706"      # amber — expiring soon
 
     def __str__(self):
         return self.name
@@ -60,14 +56,26 @@ class StockMovement(models.Model):
         ('IN', 'Stock In'),
         ('OUT', 'Stock Out'),
     ]
+    ACTION_CHOICES = [
+        ('SALE',       'Sale'),
+        ('RESTOCK',    'Restock'),
+        ('ADJUSTMENT', 'Manual Adjustment'),
+        ('DELETE',     'Product Deleted'),
+    ]
+    
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     movement_type = models.CharField(max_length=3, choices=MOVEMENT_TYPES)
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES, default='SALE')
     quantity = models.IntegerField()
+    user = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
     note = models.TextField(blank=True, null=True)
     date = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['-date']
+
     def __str__(self):
-        return f"{self.movement_type} - {self.product.name} ({self.quantity})"
+        return f"{self.movement_type} - {self.product.name} ({self.quantity}) by {self.user or 'System'}"
 
 
 # Sales
@@ -83,37 +91,6 @@ class Sale(models.Model):
 
     def __str__(self):
         return f"Sale - {self.product.name} x{self.quantity_sold}"
-
-
-# Orders 
-class Order(models.Model):
-    STATUS_CHOICES = [
-        ('PENDING', 'Pending'),
-        ('RECEIVED', 'Received'),
-        ('CANCELLED', 'Cancelled'),
-    ]
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    note = models.TextField(blank=True, null=True)
-
-    def __str__(self):
-        return f"Order #{self.id} - {self.status}"
-
-
-# Order items
-class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.IntegerField()
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
-
-    @property
-    def total_cost(self):
-        return self.quantity * self.unit_price
-
-    def __str__(self):
-        return f"{self.product.name} x{self.quantity}"
 
 
 # Demand forecast

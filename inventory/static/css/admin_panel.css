@@ -1,0 +1,260 @@
+/* ── admin_panel.css ──
+   Place at: static/css/admin_panel.css
+   Loaded by admin_base.html for all admin pages.
+   Depends on style.css (uses its CSS variables).
+-------------------------------------------------- */
+
+/* ── ADMIN SIDEBAR ACCENT ── */
+.admin-sidebar .sidebar-logo {
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.admin-logo-mark {
+  background: var(--blue) !important;
+  color: white;
+  box-shadow: 0 3px 10px rgba(59,91,219,0.3);
+  font-family: 'DM Serif Display', serif;
+  font-weight:100px;
+}
+
+.admin-logo-mark span {
+  color: #FFD43B !important;
+}
+
+/* ── STAT GRID — 4 columns for admin ── */
+.admin-stat-grid {
+  grid-template-columns: repeat(4, 1fr) !important;
+}
+
+.stat-card.admin-purple {
+  background: #6d28d9;
+}
+
+.stat-card-link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.stat-card-link:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+
+/* ── STOCK ALERT ROW ── */
+.admin-alert-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-alert-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+  border: 1px solid transparent;
+}
+
+.admin-alert-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.amber-card {
+  background: #fef3c7;
+  border-color: #fde68a;
+}
+
+.amber-card .admin-alert-label { color: #92400e; }
+.amber-card .admin-alert-value { color: #b45309; }
+.amber-card .admin-alert-icon  { color: #d97706; }
+.amber-card .admin-alert-arrow { color: #d97706; }
+
+.red-card {
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.red-card .admin-alert-label { color: #991b1b; }
+.red-card .admin-alert-value { color: #dc2626; }
+.red-card .admin-alert-icon  { color: #dc2626; }
+.red-card .admin-alert-arrow { color: #dc2626; }
+
+.admin-alert-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin-alert-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+
+.admin-alert-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.admin-alert-arrow {
+  margin-left: auto;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* ── CATEGORY PILL ── */
+.admin-pill {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  background: var(--blue-light);
+  color: var(--blue);
+  border: 1px solid #c7d4f8;
+}
+
+/* ── STATUS BADGES ── */
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.admin-badge::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.admin-badge-ok {
+  background: #d1fae5;
+  color: #065f46;
+}
+.admin-badge-ok::before  { background: #059669; }
+
+.admin-badge-out {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.admin-badge-out::before { background: #dc2626; }
+
+.admin-badge-low {
+  background: #fef3c7;
+  color: #b45309;
+}
+.admin-badge-low::before { background: #d97706; }
+
+/* ── DELETE BUTTON (products table) ── */
+.btn-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border: 1.5px solid #fecaca;
+  background: #fff;
+  color: #dc2626;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-delete:hover {
+  background: #dc2626;
+  color: #fff;
+  border-color: #dc2626;
+}
+
+/* ── ADMIN TABLE OVERRIDES ── */
+.admin-table-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.admin-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-table-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.admin-table-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ── PAGE HEADER ── */
+.admin-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.admin-page-title {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+}
+
+.admin-page-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 1024px) {
+  .admin-stat-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-alert-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-page-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}

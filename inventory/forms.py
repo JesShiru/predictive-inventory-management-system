@@ -1,5 +1,5 @@
 from django import forms
-from .models import Product, Sale, Category, Supplier
+from .models import Product, Sale
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 
@@ -7,10 +7,11 @@ class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
         fields = [
-            'item_no', 'name', 'category', 'supplier',
+            'item_no', 'name', 'category', 
             'stock_location', 'unit_price', 'stock_quantity',
             'reorder_level',
-            'date_of_last_restocking'
+            'date_of_last_restocking',
+            'expiry_date',
         ]
         widgets = {
             'date_of_last_restocking': forms.DateInput(attrs={'type': 'date'}),
@@ -29,10 +30,32 @@ class SaleForm(forms.ModelForm):
             'sale_price': forms.NumberInput(attrs={'min': 0, 'step': '0.01'}),
         }
 
-class RegisterForm(UserCreationForm):
-    email = forms.EmailField(required=True)
+
+class AdminUserCreationForm(UserCreationForm):
+    """
+    Admin-only form for creating system users.
+    Allows admins to assign staff/superuser roles and set email.
+    """
+    email = forms.EmailField(required=True, help_text="User's contact email")
+    is_staff = forms.BooleanField(
+        required=False,
+        help_text="Designates whether the user can access the admin panel."
+    )
+    is_superuser = forms.BooleanField(
+        required=False,
+        help_text="Designates whether the user has all permissions (superuser)."
+    )
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password1', 'password2']
+        fields = ['username', 'email', 'password1', 'password2', 'is_staff', 'is_superuser']
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data['email']
+        user.is_staff = self.cleaned_data.get('is_staff', False)
+        user.is_superuser = self.cleaned_data.get('is_superuser', False)
+        if commit:
+            user.save()
+        return user
 

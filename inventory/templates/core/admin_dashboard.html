@@ -1,0 +1,334 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Admin Dashboard — Shefa Dairies{% endblock %}
+
+{% block nav_admin_home %}active{% endblock %}
+
+{% block page_title %}
+<span class="page-title"><strong>Admin Dashboard</strong></span>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── STAT CARDS ── -->
+<div class="stat-grid admin-stat-grid">
+
+  <div class="stat-card blue">
+    <div>
+      <div class="stat-label">Total Sale Orders</div>
+      <div class="stat-value">{{ total_sales }}</div>
+    </div>
+    <div class="stat-icon">
+      <svg width="48" height="48" fill="none" stroke="currentColor"
+           stroke-width="1.2" viewBox="0 0 24 24">
+        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <path d="M16 10a4 4 0 0 1-8 0"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="stat-card green">
+    <div>
+      <div class="stat-label">Total Products</div>
+      <div class="stat-value">{{ total_products }}</div>
+    </div>
+    <div class="stat-icon">
+      <svg width="48" height="48" fill="none" stroke="currentColor"
+           stroke-width="1.2" viewBox="0 0 24 24">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="stat-card amber">
+    <div>
+      <div class="stat-label">Inventory Value</div>
+      <div class="stat-value large">KSh {{ inventory_value|floatformat:2 }}</div>
+    </div>
+    <div class="stat-icon">
+      <svg width="48" height="48" fill="none" stroke="currentColor"
+           stroke-width="1.2" viewBox="0 0 24 24">
+        <line x1="18" y1="20" x2="18" y2="10"/>
+        <line x1="12" y1="20" x2="12" y2="4"/>
+        <line x1="6" y1="20" x2="6" y2="14"/>
+      </svg>
+    </div>
+  </div>
+
+    <a href="{% url 'core:admin_users' %}" class="stat-card admin-purple stat-card-link">
+    <div>
+        <div class="stat-label">Total Users</div>
+        <div class="stat-value">{{ total_users }}</div>
+        <div style="font-size:0.7rem; color:rgba(255,255,255,0.6); margin-top:6px;">
+        Click to manage →
+        </div>
+    </div>
+    <div class="stat-icon">
+        <svg width="48" height="48" fill="none" stroke="currentColor"
+            stroke-width="1.2" viewBox="0 0 24 24">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+    </div>
+    </a>
+
+</div>
+
+<!-- ── STOCK ALERTS ROW ── -->
+<div class="admin-alert-row">
+
+  <a href="{% url 'core:low_stock' %}" class="admin-alert-card amber-card">
+    <div class="admin-alert-icon">
+      <svg width="20" height="20" fill="none" stroke="currentColor"
+           stroke-width="2" viewBox="0 0 24 24">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </div>
+    <div>
+      <div class="admin-alert-label">Low Stock</div>
+      <div class="admin-alert-value">{{ low_stock_count }} products</div>
+    </div>
+    <div class="admin-alert-arrow">→</div>
+  </a>
+
+  <a href="{% url 'core:out_of_stock' %}" class="admin-alert-card red-card">
+    <div class="admin-alert-icon">
+      <svg width="20" height="20" fill="none" stroke="currentColor"
+           stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+      </svg>
+    </div>
+    <div>
+      <div class="admin-alert-label">Out of Stock</div>
+      <div class="admin-alert-value">{{ out_of_stock_count }} products</div>
+    </div>
+    <div class="admin-alert-arrow">→</div>
+  </a>
+
+</div>
+
+<!-- ── CHART + RECENT SALES ── -->
+<div class="grid-2" style="margin-bottom:24px;">
+
+  <!-- Sales Trend -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Sales Trend (Last 90 Days)</span>
+    </div>
+    <div class="card-body">
+      <div class="chart-wrap">
+        <canvas id="adminSalesTrendChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Sales -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Recent Sales</span>
+      <a href="{% url 'core:sales_report' %}" class="view-all">View All →</a>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Qty</th>
+          <th>Amount</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sale in recent_sales %}
+        <tr>
+          <td>{{ sale.product.name }}</td>
+          <td>{{ sale.quantity_sold }}</td>
+          <td>KSh {{ sale.total_sale_value|floatformat:2 }}</td>
+          <td>{{ sale.date|date:"d M Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td class="empty-row" colspan="4">No recent sales found</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ── TOP SELLING PRODUCTS ── -->
+<div class="card" style="margin-bottom:24px;">
+  <div class="card-header">
+    <span class="card-title">Top Selling Products</span>
+    <a href="{% url 'core:sales_report' %}" class="view-all">Full Report →</a>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Product</th>
+        <th>Category</th>
+        <th>Units Sold</th>
+        <th>Current Stock</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in top_products %}
+      <tr>
+        <td style="color:var(--text-muted); font-weight:600;">
+          {{ forloop.counter }}
+        </td>
+        <td style="font-weight:500;">{{ item.product__name }}</td>
+        <td>
+          <span class="admin-pill">{{ item.product__category__name }}</span>
+        </td>
+        <td style="font-weight:600;">{{ item.total_sold }}</td>
+        <td>{{ item.product__stock_quantity }}</td>
+        <td>
+          {% if item.product__stock_quantity == 0 %}
+            <span class="admin-badge admin-badge-out">Out of Stock</span>
+          {% else %}
+            <span class="admin-badge admin-badge-ok">In Stock</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td class="empty-row" colspan="6">No sales data available</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ── QUICK ACTIONS ── -->
+<div class="quick-actions">
+  <div class="quick-title">Quick Actions</div>
+  <div class="quick-btns">
+    <form method="post" action="{% url 'core:admin_generate_forecast' %}" style="display:inline;">
+      {% csrf_token %}
+      <button type="submit" class="quick-btn primary"
+              onclick="return confirm('Generate a new forecast? This may take a few minutes.')">
+        <svg width="14" height="14" fill="none" stroke="currentColor"
+             stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+        </svg>
+        Generate Forecast
+      </button>
+    </form>
+    <a href="{% url 'core:product_create' %}" class="quick-btn outline">
+      <svg width="14" height="14" fill="none" stroke="currentColor"
+           stroke-width="2" viewBox="0 0 24 24">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Add Product
+    </a>
+    <a href="{% url 'core:sales_report' %}" class="quick-btn outline">
+      <svg width="14" height="14" fill="none" stroke="currentColor"
+           stroke-width="2" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      Sales Report
+    </a>
+    <a href="{% url 'core:download_pdf_report' %}" class="quick-btn outline">
+      <svg width="14" height="14" fill="none" stroke="currentColor"
+           stroke-width="2" viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Download PDF
+    </a>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const canvas = document.getElementById('adminSalesTrendChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  fetch("{% url 'core:dashboard_chart_data' %}")
+    .then(r => r.json())
+    .then(function (data) {
+      if (!data.labels || data.labels.length === 0) {
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '12px DM Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No sales data available', canvas.width / 2, canvas.height / 2);
+        return;
+      }
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: 'Daily Revenue (KES)',
+            data: data.data,
+            borderColor: '#3B5BDB',
+            backgroundColor: 'rgba(59,91,219,0.08)',
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            fill: true,
+            tension: 0.4,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => 'KES ' + ctx.parsed.y.toLocaleString('en-KE', {
+                  minimumFractionDigits: 2
+                })
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                maxTicksLimit: 6,
+                color: '#6b7280',
+                font: { size: 10 }
+              },
+              grid: { display: false }
+            },
+            y: {
+              ticks: {
+                color: '#6b7280',
+                font: { size: 10 },
+                callback: val => 'KES ' + val.toLocaleString()
+              },
+              grid: { color: '#e5e9f5' }
+            }
+          }
+        }
+      });
+    })
+    .catch(function () {
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '12px DM Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Chart unavailable', canvas.width / 2, canvas.height / 2);
+    });
+})();
+</script>
+{% endblock %}

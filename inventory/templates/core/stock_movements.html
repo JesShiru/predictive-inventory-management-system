@@ -1,0 +1,246 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Stock Movements{% endblock %}
+{% block nav_admin_home %}active{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/product_list.css' %}">
+{% endblock %}
+
+{% block page_title %}
+<span class="page-title"><strong>Stock Movements</strong> Audit Log</span>
+{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="pv-header">
+    <div>
+        <div class="pv-breadcrumb">
+            Admin Panel &rsaquo; <span>Stock Movements</span>
+        </div>
+        <h1 class="pv-title">Stock Movements</h1>
+        <p style="font-size:0.82rem; color:var(--text-muted); margin-top:4px;">
+            Audit log of all inventory changes
+        </p>
+    </div>
+    <a href="{% url 'core:admin_panel' %}" class="btn-add" style="background:var(--text);">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Back to Admin Panel
+    </a>
+</div>
+
+<!-- Stat Cards -->
+<div class="pv-summary" style="grid-template-columns: repeat(3, 1fr);">
+    <div class="summary-card">
+        <div class="summary-icon total">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+        </div>
+        <div>
+            <div class="summary-label">Total Movements</div>
+            <div class="summary-value">{{ total_movements }}</div>
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="summary-icon" style="background:#d1fae5; color:#065f46;">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+        </div>
+        <div>
+            <div class="summary-label">Sales Recorded</div>
+            <div class="summary-value">{{ sales_count }}</div>
+        </div>
+    </div>
+
+    <div class="summary-card">
+        <div class="summary-icon low">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+        </div>
+        <div>
+            <div class="summary-label">Restocks</div>
+            <div class="summary-value">{{ restock_count }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-card">
+    <form method="get" style="display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; width:100%;">
+        <div class="filter-group">
+            <label class="filter-label">Action Type</label>
+            <select name="action" class="filter-select">
+                <option value="">All Actions</option>
+                {% for code, label in action_choices %}
+                <option value="{{ code }}" {% if current_action == code %}selected{% endif %}>
+                    {{ label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label class="filter-label">Product</label>
+            <select name="product" class="filter-select">
+                <option value="">All Products</option>
+                {% for p in product_choices %}
+                <option value="{{ p.id }}"
+                    {% if current_product == p.id|stringformat:"s" %}selected{% endif %}>
+                    {{ p.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label class="filter-label">From Date</label>
+            <input type="date" name="start_date" value="{{ current_start_date }}"
+                   class="filter-select" style="padding-right:0.8rem;">
+        </div>
+
+        <div class="filter-group">
+            <label class="filter-label">To Date</label>
+            <input type="date" name="end_date" value="{{ current_end_date }}"
+                   class="filter-select" style="padding-right:0.8rem;">
+        </div>
+
+        <button type="submit" class="btn-filter">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Filter
+        </button>
+
+        {% if current_action or current_product or current_start_date or current_end_date %}
+        <a href="{% url 'core:stock_movements' %}"
+           style="font-size:0.8rem; color:var(--text-muted); text-decoration:none;
+                  align-self:center; margin-left:4px;">
+            ✕ Clear
+        </a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Table -->
+<div class="table-card">
+    <div style="display:flex; justify-content:space-between; align-items:center;
+                padding:14px 18px; border-bottom:1px solid var(--border);">
+        <span style="font-size:0.92rem; font-weight:600; color:var(--text);">
+            Movement History
+        </span>
+        <span style="font-size:0.75rem; color:var(--text-muted);">
+            {% if movements.paginator %}
+                Page {{ movements.number }} of {{ movements.paginator.num_pages }}
+            {% endif %}
+        </span>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date & Time</th>
+                    <th>Product</th>
+                    <th>Action</th>
+                    <th>Type</th>
+                    <th style="text-align:right;">Quantity</th>
+                    <th>User</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in movements %}
+                <tr>
+                    <td style="white-space:nowrap; color:var(--text-muted); font-size:0.78rem;">
+                        {{ m.date|date:"d M Y H:i" }}
+                    </td>
+                    <td>
+                        <div class="prod-name">{{ m.product.name }}</div>
+                        {% if m.product.item_no %}
+                        <div class="prod-sku">ID: {{ m.product.item_no }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="pill">{{ m.get_action_display }}</span>
+                    </td>
+                    <td>
+                        {% if m.movement_type == 'OUT' %}
+                        <span class="badge badge-out">Stock Out</span>
+                        {% else %}
+                        <span class="badge badge-in">Stock In</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right;">
+                        <span style="font-weight:600;
+                            color:{% if m.movement_type == 'OUT' %}#dc2626{% else %}#16a34a{% endif %};">
+                            {% if m.movement_type == 'OUT' %}-{% endif %}{{ m.quantity }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if m.user %}
+                        <div style="font-size:0.82rem; font-weight:500;">{{ m.user.username }}</div>
+                        <div style="font-size:0.72rem; color:var(--text-muted);">{{ m.user.email }}</div>
+                        {% else %}
+                        <span style="font-size:0.78rem; color:var(--text-muted);"><em>System</em></span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:0.78rem; color:var(--text-muted);
+                               max-width:200px; white-space:normal; line-height:1.4;">
+                        {{ m.note|default:"—"|truncatewords:8 }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <svg width="36" height="36" fill="none" stroke="currentColor"
+                                 stroke-width="1.5" viewBox="0 0 24 24">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                            </svg>
+                            <p>No stock movements found.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if movements.has_other_pages %}
+    <div style="display:flex; justify-content:center; align-items:center;
+                gap:8px; padding:16px 18px; border-top:1px solid var(--border);">
+        {% if movements.has_previous %}
+        <a href="?page=1&action={{ current_action }}&product={{ current_product }}&start_date={{ current_start_date }}&end_date={{ current_end_date }}"
+           class="quick-btn outline" style="padding:5px 12px; font-size:0.78rem;">First</a>
+        <a href="?page={{ movements.previous_page_number }}&action={{ current_action }}&product={{ current_product }}&start_date={{ current_start_date }}&end_date={{ current_end_date }}"
+           class="quick-btn outline" style="padding:5px 12px; font-size:0.78rem;">← Prev</a>
+        {% endif %}
+
+        <span style="padding:5px 14px; background:var(--blue); color:white;
+                     border-radius:7px; font-size:0.78rem; font-weight:600;">
+            {{ movements.number }} / {{ movements.paginator.num_pages }}
+        </span>
+
+        {% if movements.has_next %}
+        <a href="?page={{ movements.next_page_number }}&action={{ current_action }}&product={{ current_product }}&start_date={{ current_start_date }}&end_date={{ current_end_date }}"
+           class="quick-btn outline" style="padding:5px 12px; font-size:0.78rem;">Next →</a>
+        <a href="?page={{ movements.paginator.num_pages }}&action={{ current_action }}&product={{ current_product }}&start_date={{ current_start_date }}&end_date={{ current_end_date }}"
+           class="quick-btn outline" style="padding:5px 12px; font-size:0.78rem;">Last</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

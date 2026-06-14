@@ -3,15 +3,14 @@
 
 {% block title %}Forecast Results{% endblock %}
 {% block nav_results %}active{% endblock %}
+{% block nav_results_staff %}active{% endblock %}
 
 {% block content %}
 
 {% if error %}
 <div class="card" style="padding:2rem; border-left:4px solid var(--red); margin-bottom:18px;">
     <p style="color:var(--red); font-weight:600;">Error loading forecast results</p>
-    <p style="font-size:0.82rem; color:var(--text-muted); margin-top:8px;">
-        {{ error_message }}
-    </p>
+    <p style="font-size:0.82rem; color:var(--text-muted); margin-top:8px;">{{ error_message }}</p>
 </div>
 {% endif %}
 
@@ -22,14 +21,12 @@
             <span>Forecast</span> &rsaquo;
             <span style="color:var(--blue);">Forecast Results</span>
         </div>
-        <h1 style="font-size:1.4rem; font-weight:600; letter-spacing:-0.02em;">
-            Forecast Results
-        </h1>
+        <h1 style="font-size:1.4rem; font-weight:600; letter-spacing:-0.02em;">Forecast Results</h1>
         <p style="font-size:0.82rem; color:var(--text-muted); margin-top:4px;">
             {% if last_forecast %}
-            Forecast horizon ends: {{ last_forecast }}
+                Forecast horizon ends: {{ last_forecast }}
             {% else %}
-            No forecasts generated yet
+                No forecasts generated yet
             {% endif %}
         </p>
     </div>
@@ -37,77 +34,21 @@
         {% csrf_token %}
         <button type="submit" class="quick-btn primary">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
             </svg>
             Regenerate Forecast
         </button>
     </form>
 </div>
 
-<!-- Generation Summary -->
-{% if forecast_summary %}
-<div class="card" style="margin-bottom:18px; border-left:4px solid var(--blue);">
-    <div class="card-body" style="display:flex; gap:32px; align-items:center;">
-        <div>
-            <div style="font-size:0.7rem; font-weight:600; color:var(--text-muted);
-                        text-transform:uppercase; letter-spacing:0.06em;">
-                Products Processed
-            </div>
-            <div style="font-size:1.6rem; font-weight:600; color:var(--blue);">
-                {{ forecast_summary.products_processed }}
-            </div>
-        </div>
-        <div>
-            <div style="font-size:0.7rem; font-weight:600; color:var(--text-muted);
-                        text-transform:uppercase; letter-spacing:0.06em;">
-                Records Saved
-            </div>
-            <div style="font-size:1.6rem; font-weight:600; color:#1a7f4b;">
-                {{ forecast_summary.total_records }}
-            </div>
-        </div>
-        <div>
-            <div style="font-size:0.7rem; font-weight:600; color:var(--text-muted);
-                        text-transform:uppercase; letter-spacing:0.06em;">
-                Active Alerts
-            </div>
-            <div style="font-size:1.6rem; font-weight:600; color:#dc2626;">
-                {{ total_alerts }}
-            </div>
-        </div>
-        {% if forecast_summary.skipped %}
-        <div style="margin-left:auto;">
-            <div style="font-size:0.75rem; color:var(--text-muted);">
-                Skipped: {{ forecast_summary.skipped|join:", " }}
-            </div>
-        </div>
-        {% endif %}
-    </div>
-</div>
-{% endif %}
-
-<!-- Alert Banner -->
-{% if total_alerts > 0 %}
-<div class="alert-item red" style="margin-bottom:18px; border-radius:10px;">
-    <div class="alert-left red">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-        </svg>
-        {{ total_alerts }} restock alert days detected across all products and horizons
-    </div>
-</div>
-{% endif %}
-
-<!-- Results Table -->
+<!-- Results table -->
 {% if results %}
 <div class="card" style="padding:0;">
     <div class="card-header">
         <span class="card-title">Product Forecast Summary — Yoghurt Category</span>
         <span style="font-size:0.75rem; color:var(--text-muted);">
-            {{ results|length }} products
+            {{ results|length }} product{{ results|length|pluralize }}
         </span>
     </div>
     <div style="overflow-x:auto;">
@@ -117,55 +58,20 @@
                     <th>#</th>
                     <th>Product</th>
                     <th style="text-align:right;">Current Stock</th>
-                    <th style="text-align:right;">Total Forecasted</th>
+                    <th style="text-align:right;">Reorder Level</th>
+                    <th style="text-align:right;">Forecasted (30 days)</th>
                     <th style="text-align:right;">Avg Daily Demand</th>
-                    <th style="text-align:right;">Alert Days</th>
-                    <th>Status</th>
-                    <th>Latest Alert</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in results %}
-                <tr class="{{ r.row_class }}">
-                    <td style="color:var(--text-muted); font-weight:600;">
-                        {{ forloop.counter }}
-                    </td>
+                <tr>
+                    <td style="color:var(--text-muted); font-weight:600;">{{ forloop.counter }}</td>
                     <td style="font-weight:500;">{{ r.product.name }}</td>
                     <td style="text-align:right;">{{ r.current_stock }}</td>
-                    <td style="text-align:right; font-weight:600;">
-                        {{ r.total_forecasted }}
-                    </td>
-                    <td style="text-align:right; color:var(--text-muted);">
-                        {{ r.avg_daily }}
-                    </td>
-                    <td style="text-align:right;">
-                        {% if r.alert_count > 0 %}
-                        <span style="color:#dc2626; font-weight:600;">
-                            {{ r.alert_count }}
-                        </span>
-                        {% else %}
-                        <span style="color:#1a7f4b;">0</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if r.has_alerts %}
-                        <span style="background:#fee2e2; color:#dc2626;
-                                padding:2px 10px; border-radius:20px;
-                                font-size:0.75rem; font-weight:600;">
-                            ⚠ Restock Alert
-                        </span>
-                        {% else %}
-                        <span style="background:#f0fdf4; color:#16a34a;
-                                padding:2px 10px; border-radius:20px;
-                                font-size:0.75rem; font-weight:600;">
-                            ✓ Sufficient
-                        </span>
-                        {% endif %}
-                    </td>
-                    <td style="font-size:0.75rem; color:var(--text-muted);
-                               max-width:280px; white-space:normal; line-height:1.4;">
-                        {{ r.latest_alert|default:"—" }}
-                    </td>
+                    <td style="text-align:right; color:var(--text-muted);">{{ r.reorder_level }}</td>
+                    <td style="text-align:right; font-weight:600;">{{ r.total_forecasted }}</td>
+                    <td style="text-align:right; color:var(--text-muted);">{{ r.avg_daily }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -177,10 +83,10 @@
 {% if not error %}
 <div class="card" style="padding:3rem; text-align:center;">
     <svg width="40" height="40" fill="none" stroke="var(--text-muted)" stroke-width="1.5" viewBox="0 0 24 24"
-        style="margin:0 auto 16px;">
-        <line x1="18" y1="20" x2="18" y2="10" />
-        <line x1="12" y1="20" x2="12" y2="4" />
-        <line x1="6" y1="20" x2="6" y2="14" />
+         style="margin:0 auto 16px;">
+        <line x1="18" y1="20" x2="18" y2="10"/>
+        <line x1="12" y1="20" x2="12" y2="4"/>
+        <line x1="6" y1="20" x2="6" y2="14"/>
     </svg>
     <p style="color:var(--text-muted); font-size:0.88rem;">
         No forecast results yet.

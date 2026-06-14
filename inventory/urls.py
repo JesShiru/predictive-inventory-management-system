@@ -1,38 +1,50 @@
 from django.urls import path
 from . import views
+from django.contrib.auth import views as auth_views
 
 app_name = 'core'
 urlpatterns = [
-    # dashboard
-    path('', views.dashboard, name='dashboard'),
+
+    path('', views.home_redirect, name='home'),
+    path('login/', auth_views.LoginView.as_view(
+        template_name='registration/login.html'
+    ), name='login'),
+
+    # dashboards
+    path('dashboard/',   views.dashboard,   name='dashboard'),
+    path('admin-panel/', views.admin_panel,  name='admin_panel'),
 
     # products
-    path('products/', views.product_list, name='product_list'),
-    path('products/add/', views.product_create, name='product_create'),
-    path('products/<int:pk>/edit/', views.product_update, name='product_update'),
-    path('products/<int:pk>/delete/', views.product_delete, name='product_delete'),
+    path('products/',                   views.product_list,   name='product_list'),
+    path('products/add/',               views.product_create, name='product_create'),
+    path('products/<int:pk>/edit/',     views.product_update, name='product_update'),
+    path('products/<int:pk>/delete/',   views.product_delete, name='product_delete'),
 
-    # sales API endpoint
-    path('sales/new/', views.sale_form_view, name='sales_form'),
-    path('sales/create/', views.sale_create, name='sale_create'),
+    # sales
+    path('sales/new/',    views.sale_form_view, name='sales_form'),
+    path('sales/create/', views.sale_create,    name='sale_create'),
 
-    # out of stock
+    # stock status
     path('out-of-stock/', views.out_of_stock_view, name='out_of_stock'),
+    path('low-stock/',    views.low_stock_view,    name='low_stock'),
 
-    # low stock
-    path('low-stock/', views.low_stock_view, name='low_stock'),
-
-    # sales report page
-    path('sales-report/', views.sales_report, name='sales_report'),
-    
-    # dashboard chart data
-    path('api/dashboard-chart-data/', views.dashboard_chart_data, name='dashboard_chart_data'),
-
-    # download pdf report
+    # reports
+    path('sales-report/',        views.sales_report,       name='sales_report'),
     path('download-pdf-report/', views.download_pdf_report, name='download_pdf_report'),
 
-    #forecast
-    path("generate-forecast/", views.generate_forecast, name="generate_forecast"),
-    path("forecast-patterns/", views.forecast_patterns, name="forecast_patterns"),
-    path("forecast-results/", views.view_forecast_results, name="view_forecast_results"),
+    # dashboard chart API
+    path('api/dashboard-chart-data/', views.dashboard_chart_data, name='dashboard_chart_data'),
+
+    # ── Forecasting ───────────────────────────────────────────────
+    path('forecast/generate/',              views.generate_forecast,    name='generate_forecast'),
+    path('forecast/patterns/',              views.forecast_patterns,    name='forecast_patterns'),
+    path('forecast/results/',              views.view_forecast_results, name='view_forecast_results'),
+
+    # ── Admin panel ───────────────────────────────────────────────
+    path('admin-panel/delete/<int:pk>/',     views.admin_delete_product,   name='admin_delete_product'),
+    path('admin-panel/generate-forecast/',   views.admin_generate_forecast, name='admin_generate_forecast'),
+    path('admin-panel/users/',               views.admin_users,             name='admin_users'),
+    path('admin-panel/users/<int:pk>/toggle/', views.toggle_user_active,   name='toggle_user_active'),
+    path('admin-panel/users/create/',        views.create_user,             name='create_user'),
+    path('admin-panel/stock-movements/',     views.stock_movements_view,    name='stock_movements'),
 ]

@@ -1,0 +1,157 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Manage Users — Admin{% endblock %}
+
+{% block nav_admin_home %}{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/product_list.css' %}">
+<link rel="stylesheet" href="{% static 'css/admin_panel.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="pv-header">
+  <div>
+    <div class="pv-breadcrumb">
+      <a href="{% url 'core:admin_panel' %}">Admin</a> &rsaquo;
+      <span>Manage Users</span>
+    </div>
+    <h1 class="pv-title">Manage Users</h1>
+  </div>
+</div>
+
+<!-- Summary cards -->
+<!-- Summary cards -->
+<div class="pv-summary" style="grid-template-columns: repeat(3,1fr); margin-bottom:20px;">
+
+  <div class="summary-card">
+    <div class="summary-icon total">
+      <svg width="18" height="18" fill="none" stroke="currentColor"
+           stroke-width="2" viewBox="0 0 24 24">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    </div>
+    <div>
+      <div class="summary-label">Total Users</div>
+      <div class="summary-value">{{ total_users }}</div>
+    </div>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-icon low">
+      <svg width="18" height="18" fill="none" stroke="currentColor"
+           stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+      </svg>
+    </div>
+    <div>
+      <div class="summary-label">Admin / Staff</div>
+      <div class="summary-value">{{ staff_count }}</div>
+    </div>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-icon total">
+      <svg width="18" height="18" fill="none" stroke="currentColor"
+           stroke-width="2" viewBox="0 0 24 24">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    </div>
+    <div>
+      <div class="summary-label">Active Users</div>
+      <div class="summary-value">{{ active_count }}</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Users Table -->
+<div class="table-card">
+  <div style="display:flex; align-items:center; justify-content:space-between;
+              padding:14px 18px; border-bottom:1px solid var(--border);">
+    <span style="font-size:.92rem; font-weight:600; color:var(--text);">
+      All Users
+    </span>
+    <a href="{% url 'core:create_user' %}" class="quick-btn primary" style="padding:6px 12px; font-size:.85rem; display:inline-flex; align-items:center; gap:6px;">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Create User
+    </a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Date Joined</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td style="color:var(--text-muted);">{{ forloop.counter }}</td>
+          <td style="font-weight:600;">{{ u.username }}</td>
+          <td style="color:var(--text-muted);">{{ u.email|default:"—" }}</td>
+          <td>
+            {% if u.is_superuser %}
+              <span class="badge badge-in">Superuser</span>
+            {% elif u.is_staff %}
+              <span class="badge badge-low">Admin</span>
+            {% else %}
+              <span class="pill">Staff</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--text-muted);">
+            {{ u.date_joined|date:"d M Y" }}
+          </td>
+          <td>
+            {% if u.is_active %}
+              <span class="badge badge-in">Active</span>
+            {% else %}
+              <span class="badge badge-out">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u != request.user %}
+              <form method="post"
+                    action="{% url 'core:toggle_user_active' u.pk %}"
+                    style="display:inline;"
+                    onsubmit="return confirm('Are you sure?')">
+                {% csrf_token %}
+                <button type="submit" class="btn-delete"
+                  {% if u.is_active %}
+                    style="border-color:#fecaca; color:#dc2626;"
+                  {% else %}
+                    style="border-color:#bbf7d0; color:#059669;"
+                  {% endif %}>
+                  {% if u.is_active %}Deactivate{% else %}Activate{% endif %}
+                </button>
+              </form>
+            {% else %}
+              <span style="font-size:.75rem; color:var(--text-muted);">You</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="empty-row">No users found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

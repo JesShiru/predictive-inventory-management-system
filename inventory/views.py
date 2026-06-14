@@ -1,36 +1,49 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required 
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
-from django.views import View
-from django.db.models import Sum, Avg
-from django.utils import timezone
-from datetime import timedelta
+from django.db.models import Sum
 from django.db import transaction
 import json
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
-from .models import Product, Sale, StockMovement, Order, DemandForecast
-from .forms import ProductForm, SaleForm, RegisterForm
-import subprocess
+from .models import Product, Sale, DemandForecast, StockMovement
+from .forms import ProductForm, AdminUserCreationForm
 import os
 from django.views.decorators.http import require_POST
+from datetime import date, timedelta
 
 
-# Registration view
-class RegisterView(View):
-    def get(self, request):
-        form = RegisterForm()
-        return render(request, 'registration/register.html', {'form': form})
-
-    def post(self, request):
-        form = RegisterForm(request.POST)
+@staff_member_required
+def create_user(request):
+    """
+    Admin-only view for creating new system users.
+    Only Admins can create new accounts.
+    """
+    if request.method == 'POST':
+        form = AdminUserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save()  
-            messages.success(request, "Account created successfully. Please log in.")
-            return redirect('login')
-        return render(request, 'registration/register.html', {'form': form})
+            user = form.save()
+            messages.success(
+                request,
+                f"User '{user.username}' created successfully. "
+                f"Staff: {user.is_staff}, Superuser: {user.is_superuser}"
+            )
+            return redirect('core:admin_users')
+    else:
+        form = AdminUserCreationForm()
+
+    return render(request, 'core/create_user.html', {
+        'form': form,
+        'page_title': 'Create New User'
+    })
+
+
+def home_redirect(request):
+    """Redirect users to the appropriate page after login."""
+    if request.user.is_staff or request.user.is_superuser:
+        return redirect('core:admin_panel')
+    return redirect('core:dashboard')
 
 # Dashboard view
 @login_required
@@ -56,20 +69,35 @@ def dashboard(request):
         .order_by('-total_sold')[:5]
     )
 
-    # Sales trend (last 30 days)
-    thirty_days_ago = timezone.now() - timedelta(days=30)
+    # Sales trend (last 90 days)
+    since = date.today() - timedelta(days=90)
     daily_sales = (
         Sale.objects
-        .filter(date__gte=thirty_days_ago)
+        .filter(date__gte=since)
         .values('date')
         .annotate(total=Sum('quantity_sold'))
         .order_by('date')
     )
-
     
-    sales_labels = [str(s['date']) for s in daily_sales]
-    sales_data = [s['total'] for s in daily_sales]
+    sales_labels = json.dumps([str(s['date']) for s in daily_sales])
+    sales_data   = json.dumps([int(s['total']) for s in daily_sales])
 
+    # Expiring soon — Yoghurt products expiring within 7 days
+    today = date.today()
+    expiry_threshold = today + timedelta(days=7)
+
+    expiring_soon = Product.objects.filter(
+        category__name='Yoghurt',
+        expiry_date__isnull=False,
+        expiry_date__gte=today,           # not already expired
+        expiry_date__lte=expiry_threshold # within 7 days
+    ).order_by('expiry_date')
+
+    expired = Product.objects.filter(
+        category__name='Yoghurt',
+        expiry_date__isnull=False,
+        expiry_date__lt=today             # already past expiry
+    )
     context = {
         'total_products': total_products,
         'total_sales': total_sales,
@@ -82,6 +110,10 @@ def dashboard(request):
         'top_products': top_products,
         'sales_labels': sales_labels,
         'sales_data': sales_data,
+        'expiring_soon': expiring_soon,
+        'expiring_soon_count': expiring_soon.count(),
+        'expired':expired,
+        'expired_count': expired.count()
     }
     return render(request, 'core/dashboard.html', context)
 
@@ -90,7 +122,7 @@ def dashboard(request):
 from django.db.models import F
 @login_required
 def product_list(request):
-    products = Product.objects.select_related('category', 'supplier').all()
+    products = Product.objects.select_related('category').all()
 
     category = request.GET.get('category', '')
     location = request.GET.get('location', '')
@@ -146,17 +178,34 @@ def product_create(request):
 @login_required
 def product_update(request, pk):
     product = get_object_or_404(Product, pk=pk)
+    old_quantity = product.stock_quantity  # ← capture before save
+
     if request.method == 'POST':
         form = ProductForm(request.POST, instance=product)
         if form.is_valid():
-            form.save()
+            updated_product = form.save()
+
+            new_quantity = updated_product.stock_quantity
+            diff = new_quantity - old_quantity
+
+            # Only log if stock quantity actually changed
+            if diff != 0:
+                StockMovement.objects.create(
+                    product=updated_product,
+                    movement_type='IN' if diff > 0 else 'OUT',
+                    action='RESTOCK' if diff > 0 else 'ADJUSTMENT',
+                    quantity=abs(diff),
+                    user=request.user,
+                    note=f"Manual stock update: {old_quantity} → {new_quantity}"
+                )
+
             messages.success(request, "Product updated successfully.")
             return redirect('core:product_list')
     else:
         form = ProductForm(instance=product)
     return render(request, 'core/product_form.html', {'form': form, 'product': product})
 
-@login_required
+@staff_member_required
 def product_delete(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
@@ -219,6 +268,16 @@ def sale_create(request):
                 sale_price=sale_price
             )
             
+            # Create stock movement audit entry
+            StockMovement.objects.create(
+                product=product,
+                movement_type='OUT',
+                action='SALE',
+                quantity=quantity_sold,
+                user=request.user,
+                note=f'Sale ID: {sale.id}'
+            )
+            
             # Return the detailed response including updated stock level
             response_data = {
                 'id': sale.id,
@@ -257,13 +316,13 @@ def sale_form_view(request):
 # out of stock view
 @login_required
 def out_of_stock_view(request):
-    out_of_stock = Product.objects.select_related('category', 'supplier').filter(stock_quantity=0)
+    out_of_stock = Product.objects.select_related('category').filter(stock_quantity=0)
     return render(request, 'core/out_of_stock.html', {'products': out_of_stock, 'count': out_of_stock.count()})
 
 # low stock view
 @login_required
 def low_stock_view(request):
-    low_stock = Product.objects.select_related('category', 'supplier').filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level'))
+    low_stock = Product.objects.select_related('category').filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level'))
     return render(request, 'core/low_stock.html', {'products': low_stock, 'count': low_stock.count()})
 
 # Sales report view
@@ -277,9 +336,8 @@ def sales_report(request):
     Renders the full sales report page.
     Supports optional date filtering via GET params: ?start=YYYY-MM-DD&end=YYYY-MM-DD
     """
-    from analytics import full_report, get_engine
+    from analytics import get_engine
     import pandas as pd
-    from datetime import date, timedelta
 
     from analytics import (
         load_dataframe, summary_statistics, top_products,
@@ -344,24 +402,18 @@ def sales_report(request):
 
 @login_required
 def dashboard_chart_data(request):
-    from analytics import load_dataframe, last_30_days_trend, get_engine 
-    try:
-        engine = get_engine()
-        df     = load_dataframe(engine)
-
-        if df.empty:
-            return JsonResponse({"labels": [], "data": []})
-
-        trend = last_30_days_trend(df)
-        return JsonResponse({
-            "labels": [d["date"]    for d in trend],
-            "data":   [d["revenue"] for d in trend],
-        })
-
-    except Exception as e:
-        import traceback
-        print("DASHBOARD CHART ERROR:", traceback.format_exc())
-        return JsonResponse({"error": str(e)}, status=500)
+    since = date.today() - timedelta(days=90)
+    daily_sales = (
+        Sale.objects
+        .filter(date__gte=since)
+        .values('date')
+        .annotate(total=Sum('quantity_sold'))
+        .order_by('date')
+    )
+    return JsonResponse({
+        "labels": [str(s['date']) for s in daily_sales],
+        "data":   [s['total']     for s in daily_sales],
+    })
 
 
 # pdf download
@@ -397,141 +449,267 @@ def download_pdf_report(request):
 
 # generate_forecast view
 @login_required
+@staff_member_required
 @require_POST
 def generate_forecast(request):
-    """
-    Triggers LSTM training and forecast generation.
-    Redirects to forecast results on completion.
-    """
-    import sys
-    sys.path.insert(0, os.path.dirname(
-        os.path.dirname(os.path.abspath(__file__))
-    ))
+    from inventory.forecast_engine import run_forecast_for_product
+    from inventory.models import Product
 
-    try:
-        from forecast_engine import run_forecast
-        summary = run_forecast()
+    total_records = 0
+    products_processed = 0
 
-        request.session["forecast_summary"] = summary
-        messages.success(
-            request,
-            f"Forecast complete. "
-            f"{summary['products_processed']} products processed, "
-            f"{summary['total_records']} records saved."
-        )
-    except Exception as e:
-        messages.error(request, f"Forecast failed: {e}")
+    for product in Product.objects.filter(category__name="Yoghurt"):
+        result = run_forecast_for_product(product, force_retrain=True)
+        if not result["error"]:
+            total_records += result["records"]
+            products_processed += 1
 
+    messages.success(
+        request,
+        f"Forecast complete. {products_processed} products processed, "
+        f"{total_records} records saved."
+    )
     return redirect("core:view_forecast_results")
+
 
 # forecast_patterns view
 @login_required
 def forecast_patterns(request):
-    from datetime import date
+    """
+    Builds chart data for 7, 14, 30, and 90-day horizons.
+    Context keys match the data-island IDs in forecast_patterns.html.
+    """
     from django.db.models import Sum
-
+ 
     today = date.today()
-
-    chart_data = {
-        "90_days": {
-            "end": today + timedelta(days=90)
-        },
-        "6_months": {
-            "end": today + timedelta(days=180)
-        },
-        "1_year": {
-            "end": today + timedelta(days=365)
-        },
-    }
-
-    for label, meta in chart_data.items():
+ 
+    def chart_for_horizon(days):
+        end = today + timedelta(days=days)
         daily = (
             DemandForecast.objects
             .filter(
                 product__category__name="Yoghurt",
                 forecast_date__gte=today,
-                forecast_date__lte=meta["end"],  # ← date range only, no notes filter
+                forecast_date__lte=end,
             )
             .values("forecast_date")
             .annotate(total=Sum("forecasted_quantity"))
             .order_by("forecast_date")
         )
-        chart_data[label] = {
+        return {
             "labels": [str(d["forecast_date"]) for d in daily],
             "data":   [d["total"]              for d in daily],
         }
-
+ 
     context = {
-        "chart_90":      json.dumps(chart_data["90_days"]),
-        "chart_6m":      json.dumps(chart_data["6_months"]),
-        "chart_1y":      json.dumps(chart_data["1_year"]),
-        "has_forecasts": DemandForecast.objects.exists(),
+        "chart_7d":      json.dumps(chart_for_horizon(7)),
+        "chart_14d":     json.dumps(chart_for_horizon(14)),
+        "chart_30d":     json.dumps(chart_for_horizon(30)),
+        "chart_90d":     json.dumps(chart_for_horizon(90)),
+        "has_forecasts": DemandForecast.objects.filter(
+                             forecast_date__gte=today).exists(),
     }
-
     return render(request, "core/forecast_patterns.html", context)
 
 # forecast_result view
+# forecast_result view
 @login_required
 def view_forecast_results(request):
-    try:
-        from datetime import date
-        from django.db.models import Max, Sum, Avg
+    """
+    Shows per-SKU forecast totals and average daily demand for the next 30 days.
+    Restock status is handled separately by the stock monitoring dashboard.
+    """
+    from django.db.models import Avg, Max, Sum
 
-        today = date.today()
-        products = Product.objects.filter(category__name="Yoghurt")
+    today        = date.today()
+    next_30_days = today + timedelta(days=30)
+    products     = Product.objects.filter(category__name="Yoghurt")
 
-        results = []
-        for product in products:
-            forecasts = DemandForecast.objects.filter(
-                product=product,
-                forecast_date__gte=today,
-            )
+    results = []
+    for product in products:
+        forecasts_30 = DemandForecast.objects.filter(
+            product=product,
+            forecast_date__gte=today,
+            forecast_date__lte=next_30_days,
+        )
 
-            if not forecasts.exists():
-                continue
+        if not forecasts_30.exists():
+            continue
 
-            total_forecasted = forecasts.aggregate(t=Sum("forecasted_quantity"))["t"] or 0
-            avg_daily = forecasts.aggregate(a=Avg("forecasted_quantity"))["a"] or 0
-            alert_count = forecasts.filter(notes__icontains="RESTOCK ALERT").count()
-            latest_alert = (
-                forecasts
-                .filter(notes__icontains="RESTOCK ALERT")
-                .order_by("-forecast_date")
-                .values_list("notes", flat=True)
-                .first()
-            )
+        total_forecasted = forecasts_30.aggregate(t=Sum("forecasted_quantity"))["t"] or 0
+        avg_daily        = forecasts_30.aggregate(a=Avg("forecasted_quantity"))["a"] or 0
 
-            results.append({
-                "product":          product,
-                "current_stock":    product.stock_quantity,
-                "total_forecasted": total_forecasted,
-                "avg_daily":        round(avg_daily, 1),
-                "alert_count":      alert_count,
-                "latest_alert":     latest_alert,
-                "has_alerts":       alert_count > 0,
-                "row_class":        "alert-row" if alert_count > 0 else "",
-            })
-
-        results.sort(key=lambda x: x["has_alerts"], reverse=True)
-        forecast_summary = request.session.pop("forecast_summary", None)
-
-        context = {
-            "results":          results,
-            "forecast_summary": forecast_summary,
-            "total_alerts":     sum(r["alert_count"] for r in results),
-            "last_forecast":    DemandForecast.objects.aggregate(
-                                    m=Max("forecast_date"))["m"],
-        }
-
-        return render(request, "core/view_forecast_results.html", context)
-
-    except Exception as e:
-        # Log the actual error
-        import traceback
-        print("FORECAST RESULTS ERROR:", traceback.format_exc())
-        return render(request, "core/view_forecast_results.html", {
-            "error": True,
-            "error_message": str(e),
-            "results": [],
-            "total_alerts": 0,
+        results.append({
+            "product":          product,
+            "current_stock":    product.stock_quantity,
+            "reorder_level":    product.reorder_level,
+            "total_forecasted": total_forecasted,
+            "avg_daily":        round(avg_daily, 1),
         })
+
+    context = {
+        "results":       results,
+        "last_forecast": DemandForecast.objects.aggregate(m=Max("forecast_date"))["m"],
+    }
+    return render(request, "core/view_forecast_results.html", context)
+ 
+    
+# ── ADMIN PANEL ───────────────────────────────────────────────
+@staff_member_required
+def admin_panel(request):
+    from django.contrib.auth.models import User
+    from django.db.models import Sum, F
+
+    # Summary stats
+    total_products     = Product.objects.count()
+    total_users        = User.objects.count()
+    total_sales        = Sale.objects.count()
+    inventory_value    = sum(p.total_value for p in Product.objects.all())
+    low_stock_count    = Product.objects.filter(
+                             stock_quantity__gt=0,
+                             stock_quantity__lte=F('reorder_level')
+                         ).count()
+    out_of_stock_count = Product.objects.filter(stock_quantity=0).count()
+
+    # Recent sales (last 8)
+    recent_sales = Sale.objects.select_related('product').order_by('-date')[:8]
+
+    # Top selling products (top 8 by quantity)
+    top_products = (
+        Sale.objects
+        .values(
+            'product__name',
+            'product__category__name',
+            'product__stock_quantity',
+        )
+        .annotate(total_sold=Sum('quantity_sold'))
+        .order_by('-total_sold')[:8]
+    )
+
+    context = {
+        'total_products':     total_products,
+        'total_users':        total_users,
+        'total_sales':        total_sales,
+        'inventory_value':    inventory_value,
+        'low_stock_count':    low_stock_count,
+        'out_of_stock_count': out_of_stock_count,
+        'recent_sales':       recent_sales,
+        'top_products':       top_products,
+    }
+    return render(request, 'core/admin_dashboard.html', context)
+
+
+# ── ADMIN GENERATE FORECAST ───────────────────────────────────
+@staff_member_required
+@require_POST
+def admin_generate_forecast(request):
+    from inventory.forecast_engine import run_forecast_for_product
+    from inventory.models import Product
+
+    products_processed = 0
+
+    for product in Product.objects.filter(category__name="Yoghurt"):
+        result = run_forecast_for_product(product, force_retrain=True)
+        if not result["error"]:
+            products_processed += 1
+
+    messages.success(request, f"Forecast complete. {products_processed} products processed.")
+    return redirect("core:admin_panel")
+
+
+# ── ADMIN DELETE PRODUCT ──────────────────────────────────────
+@staff_member_required
+def admin_delete_product(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+    if request.method == "POST":
+        name = product.name
+        # Log remaining stock going out
+        if product.stock_quantity > 0:
+            StockMovement.objects.create(
+                product=product,
+                movement_type='OUT',
+                action='DELETE',
+                quantity=product.stock_quantity,
+                user=request.user,
+                note=f"Product deleted: {name}"
+            )
+        product.delete()
+        messages.success(request, f"{name} deleted successfully.")
+        return redirect("core:admin_panel")
+    return render(request, "core/admin_confirm_delete.html", {"product": product})
+
+@staff_member_required
+def admin_users(request):
+    from django.contrib.auth.models import User
+
+    users = User.objects.all().order_by('-date_joined')
+
+    return render(request, 'core/admin_users.html', {
+        'users':       users,
+        'total_users': users.count(),
+        'staff_count': users.filter(is_staff=True).count(),
+        'active_count': users.filter(is_active=True).count(),
+    })
+
+
+@staff_member_required
+def toggle_user_active(request, pk):
+    """Activate or deactivate a user account."""
+    from django.contrib.auth.models import User
+    if request.method == 'POST':
+        user = get_object_or_404(User, pk=pk)
+        if user != request.user:  # prevent self-deactivation
+            user.is_active = not user.is_active
+            user.save()
+            status = "activated" if user.is_active else "deactivated"
+            messages.success(request, f"{user.username} {status} successfully.")
+        else:
+            messages.warning(request, "You cannot deactivate your own account.")
+    return redirect('core:admin_users')
+
+
+# ── STOCK MOVEMENTS AUDIT LOG ──────────────────────────────────
+from django.core.paginator import Paginator
+
+@staff_member_required
+def stock_movements_view(request):
+    movements = StockMovement.objects.select_related('product', 'user').order_by('-date')
+
+    # Filters
+    action     = request.GET.get('action', '')
+    product_id = request.GET.get('product', '')
+    start_date = request.GET.get('start_date', '')
+    end_date   = request.GET.get('end_date', '')
+
+    if action:
+        movements = movements.filter(action=action)
+    if product_id:
+        movements = movements.filter(product_id=product_id)
+    if start_date:
+        movements = movements.filter(date__date__gte=start_date)
+    if end_date:
+        movements = movements.filter(date__date__lte=end_date)
+
+    # Stats — always from full table, not filtered
+    total_movements = StockMovement.objects.count()
+    sales_count     = StockMovement.objects.filter(action='SALE').count()
+    restock_count   = StockMovement.objects.filter(action='RESTOCK').count()
+
+    # Pagination — 20 rows per page
+    paginator = Paginator(movements, 20)
+    page      = request.GET.get('page', 1)
+    movements = paginator.get_page(page)
+
+    context = {
+        'movements':        movements,        
+        'total_movements':  total_movements,
+        'sales_count':      sales_count,
+        'restock_count':    restock_count,
+        'action_choices':   StockMovement.ACTION_CHOICES,
+        'product_choices':  Product.objects.all().order_by('name'),
+        'current_action':     action,
+        'current_product':    product_id,
+        'current_start_date': start_date,
+        'current_end_date':   end_date,
+    }
+    return render(request, 'core/stock_movements.html', context)
