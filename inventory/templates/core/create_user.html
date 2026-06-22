@@ -103,7 +103,7 @@
       <div class="form-group" style="margin-bottom: 20px;">
         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
           {{ form.is_staff }}
-          <span style="font-weight: 500; color: #1f2937;">Staff Member (Admin Access)</span>
+          <span style="font-weight: 500; color: #1f2937;">Admin Access</span>
         </label>
         {% if form.is_staff.help_text %}
           <div style="color: #6b7280; font-size: 0.875rem; margin-top: 4px; margin-left: 24px;">
@@ -113,24 +113,6 @@
         {% if form.is_staff.errors %}
           <div style="color: #dc2626; font-size: 0.875rem; margin-top: 4px;">
             {% for error in form.is_staff.errors %}{{ error }} {% endfor %}
-          </div>
-        {% endif %}
-      </div>
-
-      <!-- is_superuser -->
-      <div class="form-group" style="margin-bottom: 24px;">
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-          {{ form.is_superuser }}
-          <span style="font-weight: 500; color: #1f2937;">Superuser (Full Permissions)</span>
-        </label>
-        {% if form.is_superuser.help_text %}
-          <div style="color: #6b7280; font-size: 0.875rem; margin-top: 4px; margin-left: 24px;">
-            {{ form.is_superuser.help_text|safe }}
-          </div>
-        {% endif %}
-        {% if form.is_superuser.errors %}
-          <div style="color: #dc2626; font-size: 0.875rem; margin-top: 4px;">
-            {% for error in form.is_superuser.errors %}{{ error }} {% endfor %}
           </div>
         {% endif %}
       </div>
@@ -145,12 +127,6 @@
         </a>
       </div>
     </form>
-  </div>
-
-  <!-- Info Box -->
-  <div style="margin-top: 24px; padding: 16px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; color: #1e40af;">
-    <strong>ℹ️ Admin-Only Feature</strong><br>
-    This user creation form is only accessible to administrators. Users created here will receive their credentials and can log in immediately.
   </div>
 </div>
 

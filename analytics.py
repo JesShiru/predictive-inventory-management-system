@@ -161,7 +161,7 @@ def last_7_days(df: pd.DataFrame) -> dict:
     }
 
 
-# ── 5. 30-DAY TREND (for dashboard chart) ────────────────────
+# ── 5. 30-DAY TREND ────────────────────
 
 def last_30_days_trend(df: pd.DataFrame) -> list[dict]:
     """

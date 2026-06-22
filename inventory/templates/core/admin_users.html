@@ -22,7 +22,6 @@
 </div>
 
 <!-- Summary cards -->
-<!-- Summary cards -->
 <div class="pv-summary" style="grid-template-columns: repeat(3,1fr); margin-bottom:20px;">
 
   <div class="summary-card">
@@ -105,9 +104,7 @@
           <td style="font-weight:600;">{{ u.username }}</td>
           <td style="color:var(--text-muted);">{{ u.email|default:"—" }}</td>
           <td>
-            {% if u.is_superuser %}
-              <span class="badge badge-in">Superuser</span>
-            {% elif u.is_staff %}
+            {% if u.is_staff %}
               <span class="badge badge-low">Admin</span>
             {% else %}
               <span class="pill">Staff</span>

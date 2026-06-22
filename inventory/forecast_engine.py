@@ -115,8 +115,6 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add calendar features to the DataFrame, then return only FEATURE_COLS.
 
-    Calendar features are deterministic — they can be computed for any
-    future date without risk of data leakage.
     """
     df = df.copy()
     df["day_of_week"] = df["date"].dt.dayofweek.astype(float)   # 0=Mon … 6=Sun

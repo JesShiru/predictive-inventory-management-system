@@ -18,7 +18,30 @@ class ProductForm(forms.ModelForm):
             'unit_price': forms.NumberInput(attrs={'min': 0, 'step': '0.01'}), 
             'stock_quantity': forms.NumberInput(attrs={'min': 0}),
             'reorder_level': forms.NumberInput(attrs={'min': 0}),
-}
+            'expiry_date': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        stock_qty = cleaned_data.get('stock_quantity')
+        reorder_level = cleaned_data.get('reorder_level')
+        expiry_date = cleaned_data.get('expiry_date')
+        
+        from datetime import date
+
+        # Reorder level cannot exceed current stock
+        if reorder_level is not None and stock_qty is not None:
+            if reorder_level > stock_qty:
+                self.add_error(
+                    'reorder_level',
+                    f'Reorder level ({reorder_level}) cannot exceed stock quantity ({stock_qty}).'
+                )
+
+        # Expiry date must be in the future
+        if expiry_date and expiry_date < date.today():
+            self.add_error('expiry_date', 'Expiry date cannot be in the past.')
+
+        return cleaned_data
 
 class SaleForm(forms.ModelForm):
     class Meta:
@@ -34,27 +57,22 @@ class SaleForm(forms.ModelForm):
 class AdminUserCreationForm(UserCreationForm):
     """
     Admin-only form for creating system users.
-    Allows admins to assign staff/superuser roles and set email.
+    Allows admins to assign staff roles and set email.
     """
     email = forms.EmailField(required=True, help_text="User's contact email")
     is_staff = forms.BooleanField(
         required=False,
         help_text="Designates whether the user can access the admin panel."
     )
-    is_superuser = forms.BooleanField(
-        required=False,
-        help_text="Designates whether the user has all permissions (superuser)."
-    )
-
+    
     class Meta:
         model = User
-        fields = ['username', 'email', 'password1', 'password2', 'is_staff', 'is_superuser']
+        fields = ['username', 'email', 'password1', 'password2', 'is_staff']
 
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
         user.is_staff = self.cleaned_data.get('is_staff', False)
-        user.is_superuser = self.cleaned_data.get('is_superuser', False)
         if commit:
             user.save()
         return user

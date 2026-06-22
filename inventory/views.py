@@ -27,7 +27,7 @@ def create_user(request):
             messages.success(
                 request,
                 f"User '{user.username}' created successfully. "
-                f"Staff: {user.is_staff}, Superuser: {user.is_superuser}"
+                f"Staff: {user.is_staff}"
             )
             return redirect('core:admin_users')
     else:
@@ -399,7 +399,6 @@ def sales_report(request):
 
 
 # DASHBOARD CHART DATA (JSON endpoint)
-
 @login_required
 def dashboard_chart_data(request):
     since = date.today() - timedelta(days=90)
@@ -511,7 +510,6 @@ def forecast_patterns(request):
     }
     return render(request, "core/forecast_patterns.html", context)
 
-# forecast_result view
 # forecast_result view
 @login_required
 def view_forecast_results(request):

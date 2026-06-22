@@ -24,7 +24,6 @@ class Product(models.Model):
     stock_location = models.CharField(max_length=20, choices=LOCATION_CHOICES)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     stock_quantity = models.IntegerField(default=0)
-    packing_as_per_plan = models.IntegerField(blank=True, null=True)  
     reorder_level = models.IntegerField(default=0)
     expiry_date = models.DateField(blank=True, null=True)
     date_of_last_restocking = models.DateField(blank=True, null=True)
