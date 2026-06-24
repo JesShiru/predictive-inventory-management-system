@@ -49,8 +49,8 @@
       </svg>
     </div>
     <div>
-      <div class="summary-label">Admin / Staff</div>
-      <div class="summary-value">{{ staff_count }}</div>
+      <div class="summary-label">Admin</div>
+      <div class="summary-value">{{ admin_count }}</div>
     </div>
   </div>
 
@@ -76,7 +76,7 @@
     <span style="font-size:.92rem; font-weight:600; color:var(--text);">
       All Users
     </span>
-    <a href="{% url 'core:create_user' %}" class="quick-btn primary" style="padding:6px 12px; font-size:.85rem; display:inline-flex; align-items:center; gap:6px;">
+    <a href="{% url 'accounts:create_user' %}" class="quick-btn primary" style="padding:6px 12px; font-size:.85rem; display:inline-flex; align-items:center; gap:6px;">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <line x1="12" y1="5" x2="12" y2="19"/>
         <line x1="5" y1="12" x2="19" y2="12"/>
@@ -104,7 +104,7 @@
           <td style="font-weight:600;">{{ u.username }}</td>
           <td style="color:var(--text-muted);">{{ u.email|default:"—" }}</td>
           <td>
-            {% if u.is_staff %}
+            {% if u.role == 'ADMIN' %}
               <span class="badge badge-low">Admin</span>
             {% else %}
               <span class="pill">Staff</span>

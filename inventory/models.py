@@ -1,5 +1,6 @@
 from django.db import models
 from datetime import date
+from accounts.models import User
 
 # Category
 class Category(models.Model):
@@ -66,7 +67,7 @@ class StockMovement(models.Model):
     movement_type = models.CharField(max_length=3, choices=MOVEMENT_TYPES)
     action = models.CharField(max_length=20, choices=ACTION_CHOICES, default='SALE')
     quantity = models.IntegerField()
-    user = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True)
+    user = models.ForeignKey("accounts.User", on_delete=models.PROTECT)
     note = models.TextField(blank=True, null=True)
     date = models.DateTimeField(auto_now_add=True)
 

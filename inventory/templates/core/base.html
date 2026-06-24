@@ -17,9 +17,9 @@
 
 <body>
 
-  {% if user.is_authenticated %}
+  {% if request.session.user_id %}
 
-  {% if user.is_staff %}
+  {% if request.session.role == 'ADMIN' %}
     <!-- ── ADMIN SIDEBAR ── -->
     <aside class="sidebar admin-sidebar" id="sidebar">
       <div class="sidebar-logo">
@@ -232,7 +232,7 @@
   <!-- ── MAIN ── -->
   <div class="main {% if not user.is_authenticated %}main-full{% endif %}" id="main-content">
 
-    {% if user.is_authenticated %}
+    {% if request.session.user_id %}
     <!-- ── TOPBAR ── -->
     <header class="topbar">
       <div class="topbar-left">
@@ -246,8 +246,8 @@
         {% block page_title %}{% endblock %}
       </div>
       <div class="topbar-right">
-        <span class="username">{{ user.username }}</span>
-        <form method="post" action="{% url 'logout' %}" style="display:inline">
+        <span class="username">{{ request.session.username }}</span>
+        <form method="post" action="{% url 'accounts:logout' %}" style="display:inline">
           {% csrf_token %}
           <button type="submit" class="btn-logout">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">

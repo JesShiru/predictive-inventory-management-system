@@ -8,45 +8,18 @@ import json
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from .models import Product, Sale, DemandForecast, StockMovement
-from .forms import ProductForm, AdminUserCreationForm
+from .forms import ProductForm
 import os
 from django.views.decorators.http import require_POST
 from datetime import date, timedelta
+from accounts.decorators import role_required
+
+from django.shortcuts import redirect
 
 
-@staff_member_required
-def create_user(request):
-    """
-    Admin-only view for creating new system users.
-    Only Admins can create new accounts.
-    """
-    if request.method == 'POST':
-        form = AdminUserCreationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            messages.success(
-                request,
-                f"User '{user.username}' created successfully. "
-                f"Staff: {user.is_staff}"
-            )
-            return redirect('core:admin_users')
-    else:
-        form = AdminUserCreationForm()
-
-    return render(request, 'core/create_user.html', {
-        'form': form,
-        'page_title': 'Create New User'
-    })
-
-
-def home_redirect(request):
-    """Redirect users to the appropriate page after login."""
-    if request.user.is_staff or request.user.is_superuser:
-        return redirect('core:admin_panel')
-    return redirect('core:dashboard')
 
 # Dashboard view
-@login_required
+@role_required(['ADMIN', 'MANAGER', 'STAFF'])
 def dashboard(request):
     # Stats
     total_products = Product.objects.count()
@@ -120,7 +93,7 @@ def dashboard(request):
 
 # Product CRUD Views
 from django.db.models import F
-@login_required
+@role_required(['ADMIN', 'MANAGER', 'STAFF'])
 def product_list(request):
     products = Product.objects.select_related('category').all()
 
@@ -163,7 +136,7 @@ def product_list(request):
         ],
     })
 
-@login_required
+@role_required(['ADMIN', 'MANAGER', 'STAFF'])
 def product_create(request):
     if request.method == 'POST':
         form = ProductForm(request.POST)
@@ -175,7 +148,7 @@ def product_create(request):
         form = ProductForm()
     return render(request, 'core/product_form.html', {'form': form})
 
-@login_required
+@role_required(['ADMIN', 'MANAGER', 'STAFF'])
 def product_update(request, pk):
     product = get_object_or_404(Product, pk=pk)
     old_quantity = product.stock_quantity  # ← capture before save
@@ -205,7 +178,7 @@ def product_update(request, pk):
         form = ProductForm(instance=product)
     return render(request, 'core/product_form.html', {'form': form, 'product': product})
 
-@staff_member_required
+@role_required(['ADMIN'])
 def product_delete(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
@@ -217,7 +190,7 @@ def product_delete(request, pk):
 
 # Sales API Endpoint
 @require_http_methods(["POST"])
-@login_required
+@role_required(['STAFF'])
 def sale_create(request):
     """
     API endpoint to record a sale.
@@ -297,7 +270,7 @@ def sale_create(request):
         return JsonResponse({"error": str(e)}, status=400)
 
 # sales form view
-@login_required
+@role_required(['ADMIN', 'MANAGER', 'STAFF'])
 def sale_form_view(request):
     products = Product.objects.select_related('category').filter(category__name='Yoghurt')
     product_options = [
@@ -314,13 +287,13 @@ def sale_form_view(request):
     })
 
 # out of stock view
-@login_required
+@role_required(['ADMIN', 'MANAGER', 'STAFF'])
 def out_of_stock_view(request):
     out_of_stock = Product.objects.select_related('category').filter(stock_quantity=0)
     return render(request, 'core/out_of_stock.html', {'products': out_of_stock, 'count': out_of_stock.count()})
 
 # low stock view
-@login_required
+@role_required(['ADMIN', 'MANAGER', 'STAFF'])
 def low_stock_view(request):
     low_stock = Product.objects.select_related('category').filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level'))
     return render(request, 'core/low_stock.html', {'products': low_stock, 'count': low_stock.count()})
@@ -330,7 +303,7 @@ def low_stock_view(request):
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-@login_required
+@role_required(['ADMIN', 'MANAGER', 'STAFF'])
 def sales_report(request):
     """
     Renders the full sales report page.
@@ -399,7 +372,7 @@ def sales_report(request):
 
 
 # DASHBOARD CHART DATA (JSON endpoint)
-@login_required
+@role_required(['ADMIN', 'MANAGER', 'STAFF'])
 def dashboard_chart_data(request):
     since = date.today() - timedelta(days=90)
     daily_sales = (
@@ -416,7 +389,7 @@ def dashboard_chart_data(request):
 
 
 # pdf download
-@login_required
+@role_required(['ADMIN', 'MANAGER', 'STAFF'])
 def download_pdf_report(request):
     """
     Generates and streams the PDF sales report as a download.
@@ -447,8 +420,7 @@ def download_pdf_report(request):
         return HttpResponse(f"PDF generation failed: {e}", status=500)
 
 # generate_forecast view
-@login_required
-@staff_member_required
+@role_required(['ADMIN'])
 @require_POST
 def generate_forecast(request):
     from inventory.forecast_engine import run_forecast_for_product
@@ -472,7 +444,7 @@ def generate_forecast(request):
 
 
 # forecast_patterns view
-@login_required
+@role_required(['ADMIN', 'MANAGER', 'STAFF'])
 def forecast_patterns(request):
     """
     Builds chart data for 7, 14, 30, and 90-day horizons.
@@ -511,7 +483,7 @@ def forecast_patterns(request):
     return render(request, "core/forecast_patterns.html", context)
 
 # forecast_result view
-@login_required
+@role_required(['ADMIN', 'MANAGER', 'STAFF'])
 def view_forecast_results(request):
     """
     Shows per-SKU forecast totals and average daily demand for the next 30 days.
@@ -553,7 +525,7 @@ def view_forecast_results(request):
  
     
 # ── ADMIN PANEL ───────────────────────────────────────────────
-@staff_member_required
+@role_required(['ADMIN'])
 def admin_panel(request):
     from django.contrib.auth.models import User
     from django.db.models import Sum, F
@@ -598,7 +570,7 @@ def admin_panel(request):
 
 
 # ── ADMIN GENERATE FORECAST ───────────────────────────────────
-@staff_member_required
+@role_required(['ADMIN'])
 @require_POST
 def admin_generate_forecast(request):
     from inventory.forecast_engine import run_forecast_for_product
@@ -616,7 +588,7 @@ def admin_generate_forecast(request):
 
 
 # ── ADMIN DELETE PRODUCT ──────────────────────────────────────
-@staff_member_required
+@role_required(['ADMIN'])
 def admin_delete_product(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == "POST":
@@ -636,24 +608,24 @@ def admin_delete_product(request, pk):
         return redirect("core:admin_panel")
     return render(request, "core/admin_confirm_delete.html", {"product": product})
 
-@staff_member_required
+@role_required(['ADMIN'])
 def admin_users(request):
-    from django.contrib.auth.models import User
+    from accounts.models import User
 
     users = User.objects.all().order_by('-date_joined')
 
     return render(request, 'core/admin_users.html', {
         'users':       users,
         'total_users': users.count(),
-        'staff_count': users.filter(is_staff=True).count(),
+        'admin_count': users.filter(role='ADMIN').count(),
         'active_count': users.filter(is_active=True).count(),
     })
 
 
-@staff_member_required
+@role_required(['ADMIN'])
 def toggle_user_active(request, pk):
     """Activate or deactivate a user account."""
-    from django.contrib.auth.models import User
+    from accounts.models import User
     if request.method == 'POST':
         user = get_object_or_404(User, pk=pk)
         if user != request.user:  # prevent self-deactivation
@@ -669,7 +641,7 @@ def toggle_user_active(request, pk):
 # ── STOCK MOVEMENTS AUDIT LOG ──────────────────────────────────
 from django.core.paginator import Paginator
 
-@staff_member_required
+@role_required(['ADMIN'])
 def stock_movements_view(request):
     movements = StockMovement.objects.select_related('product', 'user').order_by('-date')
 
