@@ -5,11 +5,6 @@ from django.contrib.auth import views as auth_views
 app_name = 'core'
 urlpatterns = [
 
-    path('', views.home_redirect, name='home'),
-    path('login/', auth_views.LoginView.as_view(
-        template_name='registration/login.html'
-    ), name='login'),
-
     # dashboards
     path('dashboard/',   views.dashboard,   name='dashboard'),
     path('admin-panel/', views.admin_panel,  name='admin_panel'),
@@ -45,6 +40,5 @@ urlpatterns = [
     path('admin-panel/generate-forecast/',   views.admin_generate_forecast, name='admin_generate_forecast'),
     path('admin-panel/users/',               views.admin_users,             name='admin_users'),
     path('admin-panel/users/<int:pk>/toggle/', views.toggle_user_active,   name='toggle_user_active'),
-    path('admin-panel/users/create/',        views.create_user,             name='create_user'),
     path('admin-panel/stock-movements/',     views.stock_movements_view,    name='stock_movements'),
 ]

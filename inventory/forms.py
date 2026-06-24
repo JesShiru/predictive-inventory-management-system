@@ -54,26 +54,3 @@ class SaleForm(forms.ModelForm):
         }
 
 
-class AdminUserCreationForm(UserCreationForm):
-    """
-    Admin-only form for creating system users.
-    Allows admins to assign staff roles and set email.
-    """
-    email = forms.EmailField(required=True, help_text="User's contact email")
-    is_staff = forms.BooleanField(
-        required=False,
-        help_text="Designates whether the user can access the admin panel."
-    )
-    
-    class Meta:
-        model = User
-        fields = ['username', 'email', 'password1', 'password2', 'is_staff']
-
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        user.email = self.cleaned_data['email']
-        user.is_staff = self.cleaned_data.get('is_staff', False)
-        if commit:
-            user.save()
-        return user
-
