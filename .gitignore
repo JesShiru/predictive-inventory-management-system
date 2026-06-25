@@ -1,0 +1,38 @@
+# Created by venv; see https://docs.python.org/3/library/venv.html
+
+.env
+*.pyc
+__pycache__/
+*.sqlite3
+
+.env.local
+*.pkl
+*.keras
+
+# Python
+*.pyo
+__pycache__/
+*.egg-info/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Django
+*.sqlite3
+media/
+staticfiles/
+
+# Generated files
+sales_data.csv
+sales_report_*.pdf
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,216 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Create New User — Admin{% endblock %}
+
+{% block nav_admin_home %}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/product_list.css' %}">
+{% endblock %}
+
+{% block content %}
+
+<div class="pv-header">
+    <div>
+        <div class="pv-breadcrumb">
+            <a href="{% url 'core:admin_panel' %}">Admin</a> &rsaquo;
+            <a href="{% url 'core:admin_users' %}">Manage Users</a> &rsaquo;
+            <span>Create New User</span>
+        </div>
+        <h1 class="pv-title">Create New User</h1>
+    </div>
+</div>
+
+<div style="max-width: 600px; margin: 40px auto;">
+    <div class="form-card">
+
+        <div class="card-header" style="background:#f3f4f6;padding:16px 20px;border-bottom:1px solid #e5e7eb;">
+            <span class="card-title">User Registration Form</span>
+        </div>
+
+        <form method="post" style="padding:24px;">
+            {% csrf_token %}
+
+            <!-- Username -->
+            <div class="form-group">
+                <label for="username">Username</label>
+
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    value="{{ data.username|default:'' }}"
+                    required
+                >
+
+                {% if errors.username %}
+                    <div class="error">{{ errors.username }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+                <label for="email">Email Address</label>
+
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value="{{ data.email|default:'' }}"
+                    required
+                >
+
+                {% if errors.email %}
+                    <div class="error">{{ errors.email }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Role -->
+            <div class="form-group">
+                <label for="role">Role</label>
+
+                <select id="role" name="role" required>
+                    <option value="">Select a role</option>
+
+                    {% for value, label in roles %}
+                        <option
+                            value="{{ value }}"
+                            {% if data.role == value %}selected{% endif %}
+                        >
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                {% if errors.role %}
+                    <div class="error">{{ errors.role }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Password -->
+            <div class="form-group">
+                <label for="password1">Password</label>
+
+                <input
+                    type="password"
+                    id="password1"
+                    name="password1"
+                    required
+                >
+                {% if errors.password1 %}
+                    <div class="error">{{ errors.password1 }}</div>
+                {% endif %}
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="form-group">
+                <label for="password2">Confirm Password</label>
+
+                <input
+                    type="password"
+                    id="password2"
+                    name="password2"
+                    required
+                >
+
+                {% if errors.password2 %}
+                    <div class="error">{{ errors.password2 }}</div>
+                {% endif %}
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:30px;">
+                <button type="submit" class="btn-primary">
+                    Create User
+                </button>
+
+                <a href="{% url 'core:admin_users' %}" class="btn-secondary">
+                    Cancel
+                </a>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+{block extra_js %}
+<script>
+    // password toggle functionality
+    function togglePw(id){
+        const pwInput = document.getElementById(id);
+        if(pwInput.type === "password"){
+            pwInput.type = "text";
+        } else {
+            pwInput.type = "password";
+        }
+    }
+</script>
+{% endblock %}
+<style>
+
+.form-group{
+    margin-bottom:20px;
+}
+
+.form-group label{
+    display:block;
+    margin-bottom:6px;
+    font-weight:600;
+    color:#1f2937;
+}
+
+.form-group input,
+.form-group select{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid #d1d5db;
+    border-radius:6px;
+    font-size:0.95rem;
+    font-family:inherit;
+    box-sizing:border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus{
+    outline:none;
+    border-color:#3B5BDB;
+    box-shadow:0 0 0 3px rgba(59,91,219,.1);
+}
+
+.error{
+    color:#dc2626;
+    margin-top:6px;
+    font-size:.875rem;
+}
+
+.btn-primary{
+    padding:10px 20px;
+    background:#3B5BDB;
+    color:white;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-weight:500;
+}
+
+.btn-primary:hover{
+    background:#2d4cb8;
+}
+
+.btn-secondary{
+    padding:10px 20px;
+    background:#e5e7eb;
+    color:#111827;
+    text-decoration:none;
+    border-radius:6px;
+    font-weight:500;
+}
+
+.btn-secondary:hover{
+    background:#d1d5db;
+}
+
+</style>
+
+{% endblock %}
