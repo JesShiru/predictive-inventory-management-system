@@ -1,6 +1,4 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.db.models import Sum
 from django.db import transaction
@@ -12,24 +10,32 @@ from .forms import ProductForm
 import os
 from django.views.decorators.http import require_POST
 from datetime import date, timedelta
-from accounts.decorators import role_required
+from accounts.decorators import permission_required
+from accounts.models import User
 
-from django.shortcuts import redirect
-
-
-
-# Dashboard view
-@role_required(['ADMIN', 'MANAGER', 'STAFF'])
-def dashboard(request):
-    # Stats
+# a helper function for inventory statistics
+# called in the dashboard view and the admin panel view
+def get_inventory_stats():
     total_products = Product.objects.count()
     total_sales = Sale.objects.count()
     inventory_value = sum(p.total_value for p in Product.objects.all())
-
-    # Alerts
     all_products = Product.objects.all()
-    out_of_stock = [p for p in all_products if p.stock_quantity == 0]
-    low_stock = [p for p in all_products if 0 < p.stock_quantity <= p.reorder_level]
+    out_of_stock_count = all_products.filter(stock_quantity=0).count()
+    low_stock_count = all_products.filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level')).count()
+
+    return {
+        'total_products': total_products,
+        'total_sales': total_sales,
+        'inventory_value': inventory_value,
+        'out_of_stock_count': out_of_stock_count,
+        'low_stock_count': low_stock_count,
+    }
+
+# Dashboard view
+@permission_required("view_dashboard")
+def dashboard(request):
+    # call the inventory stats function to get the summary stats
+    stats = get_inventory_stats()
 
     # Recent sales
     recent_sales = Sale.objects.select_related('product').order_by('-date')[:5]
@@ -41,19 +47,6 @@ def dashboard(request):
         .annotate(total_sold=Sum('quantity_sold'))
         .order_by('-total_sold')[:5]
     )
-
-    # Sales trend (last 90 days)
-    since = date.today() - timedelta(days=90)
-    daily_sales = (
-        Sale.objects
-        .filter(date__gte=since)
-        .values('date')
-        .annotate(total=Sum('quantity_sold'))
-        .order_by('date')
-    )
-    
-    sales_labels = json.dumps([str(s['date']) for s in daily_sales])
-    sales_data   = json.dumps([int(s['total']) for s in daily_sales])
 
     # Expiring soon — Yoghurt products expiring within 7 days
     today = date.today()
@@ -72,17 +65,13 @@ def dashboard(request):
         expiry_date__lt=today             # already past expiry
     )
     context = {
-        'total_products': total_products,
-        'total_sales': total_sales,
-        'inventory_value': inventory_value,
-        'out_of_stock': out_of_stock,
-        'out_of_stock_count': len(out_of_stock),
-        'low_stock': low_stock,
-        'low_stock_count': len(low_stock),
+        'total_products': stats['total_products'],
+        'total_sales': stats['total_sales'],
+        'inventory_value': stats['inventory_value'],
+        'out_of_stock_count': stats['out_of_stock_count'],
+        'low_stock_count': stats['low_stock_count'],
         'recent_sales': recent_sales,
         'top_products': top_products,
-        'sales_labels': sales_labels,
-        'sales_data': sales_data,
         'expiring_soon': expiring_soon,
         'expiring_soon_count': expiring_soon.count(),
         'expired':expired,
@@ -93,7 +82,7 @@ def dashboard(request):
 
 # Product CRUD Views
 from django.db.models import F
-@role_required(['ADMIN', 'MANAGER', 'STAFF'])
+@permission_required("manage_products")
 def product_list(request):
     products = Product.objects.select_related('category').all()
 
@@ -136,7 +125,9 @@ def product_list(request):
         ],
     })
 
-@role_required(['ADMIN', 'MANAGER', 'STAFF'])
+# view for creating products
+# the form is handled in the template, and the view handles the POST request to save the product
+@permission_required("manage_products")
 def product_create(request):
     if request.method == 'POST':
         form = ProductForm(request.POST)
@@ -148,11 +139,13 @@ def product_create(request):
         form = ProductForm()
     return render(request, 'core/product_form.html', {'form': form})
 
-@role_required(['ADMIN', 'MANAGER', 'STAFF'])
+# view for updating products
+@permission_required("manage_products")
 def product_update(request, pk):
     product = get_object_or_404(Product, pk=pk)
-    old_quantity = product.stock_quantity  # ← capture before save
+    old_quantity = product.stock_quantity  # ← capture the old quantity before save
 
+    # Handle the form submission
     if request.method == 'POST':
         form = ProductForm(request.POST, instance=product)
         if form.is_valid():
@@ -178,7 +171,8 @@ def product_update(request, pk):
         form = ProductForm(instance=product)
     return render(request, 'core/product_form.html', {'form': form, 'product': product})
 
-@role_required(['ADMIN'])
+# view for deleting products
+@permission_required("delete_products")
 def product_delete(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
@@ -190,17 +184,19 @@ def product_delete(request, pk):
 
 # Sales API Endpoint
 @require_http_methods(["POST"])
-@role_required(['STAFF'])
+@permission_required("record_sales")
 def sale_create(request):
     """
     API endpoint to record a sale.
     Expects JSON: { "product": <product_id>, "quantity_sold": <int>, "sale_price": <decimal> }
     """
+    # Validate JSON input
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+    # Validate required fields
     product_id = data.get('product')
     try:
         quantity_sold = int(data.get('quantity_sold'))
@@ -219,6 +215,7 @@ def sale_create(request):
     if not product_id:
         return JsonResponse({"error": "Product ID is required."}, status=400)
 
+    # Use a transaction to ensure atomicity
     try:
         with transaction.atomic():
             # Lock the product row for update to prevent race conditions
@@ -270,7 +267,7 @@ def sale_create(request):
         return JsonResponse({"error": str(e)}, status=400)
 
 # sales form view
-@role_required(['ADMIN', 'MANAGER', 'STAFF'])
+@permission_required("record_sales")
 def sale_form_view(request):
     products = Product.objects.select_related('category').filter(category__name='Yoghurt')
     product_options = [
@@ -287,23 +284,23 @@ def sale_form_view(request):
     })
 
 # out of stock view
-@role_required(['ADMIN', 'MANAGER', 'STAFF'])
+@permission_required("view_reports")
 def out_of_stock_view(request):
     out_of_stock = Product.objects.select_related('category').filter(stock_quantity=0)
     return render(request, 'core/out_of_stock.html', {'products': out_of_stock, 'count': out_of_stock.count()})
 
 # low stock view
-@role_required(['ADMIN', 'MANAGER', 'STAFF'])
+@permission_required("view_reports")
 def low_stock_view(request):
     low_stock = Product.objects.select_related('category').filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level'))
     return render(request, 'core/low_stock.html', {'products': low_stock, 'count': low_stock.count()})
 
 # Sales report view
-# Import your analytics engine
+# Import the analytics engine
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-@role_required(['ADMIN', 'MANAGER', 'STAFF'])
+@permission_required("view_reports")
 def sales_report(request):
     """
     Renders the full sales report page.
@@ -370,11 +367,11 @@ def sales_report(request):
         })
     
 
-
 # DASHBOARD CHART DATA (JSON endpoint)
-@role_required(['ADMIN', 'MANAGER', 'STAFF'])
+@permission_required("view_reports")
 def dashboard_chart_data(request):
     since = date.today() - timedelta(days=90)
+
     daily_sales = (
         Sale.objects
         .filter(date__gte=since)
@@ -383,13 +380,14 @@ def dashboard_chart_data(request):
         .order_by('date')
     )
     return JsonResponse({
-        "labels": [str(s['date']) for s in daily_sales],
-        "data":   [s['total']     for s in daily_sales],
+        "labels": [str(d['date']) for d in daily_sales],
+        "data":   [d['total']     for d in daily_sales],
+        "label": "Units Sold",
     })
 
 
 # pdf download
-@role_required(['ADMIN', 'MANAGER', 'STAFF'])
+@permission_required("download_pdf_report")
 def download_pdf_report(request):
     """
     Generates and streams the PDF sales report as a download.
@@ -419,8 +417,8 @@ def download_pdf_report(request):
     except Exception as e:
         return HttpResponse(f"PDF generation failed: {e}", status=500)
 
-# generate_forecast view
-@role_required(['ADMIN'])
+'''# generate_forecast view
+@permission_required("generate_forecast")
 @require_POST
 def generate_forecast(request):
     from inventory.forecast_engine import run_forecast_for_product
@@ -440,11 +438,11 @@ def generate_forecast(request):
         f"Forecast complete. {products_processed} products processed, "
         f"{total_records} records saved."
     )
-    return redirect("core:view_forecast_results")
+    return redirect("core:view_forecast_results")'''
 
 
 # forecast_patterns view
-@role_required(['ADMIN', 'MANAGER', 'STAFF'])
+@permission_required("view_reports")
 def forecast_patterns(request):
     """
     Builds chart data for 7, 14, 30, and 90-day horizons.
@@ -483,7 +481,7 @@ def forecast_patterns(request):
     return render(request, "core/forecast_patterns.html", context)
 
 # forecast_result view
-@role_required(['ADMIN', 'MANAGER', 'STAFF'])
+@permission_required("view_reports")
 def view_forecast_results(request):
     """
     Shows per-SKU forecast totals and average daily demand for the next 30 days.
@@ -525,21 +523,15 @@ def view_forecast_results(request):
  
     
 # ── ADMIN PANEL ───────────────────────────────────────────────
-@role_required(['ADMIN'])
+@permission_required("view_admin_dashboard")
 def admin_panel(request):
-    from django.contrib.auth.models import User
     from django.db.models import Sum, F
 
-    # Summary stats
-    total_products     = Product.objects.count()
-    total_users        = User.objects.count()
-    total_sales        = Sale.objects.count()
-    inventory_value    = sum(p.total_value for p in Product.objects.all())
-    low_stock_count    = Product.objects.filter(
-                             stock_quantity__gt=0,
-                             stock_quantity__lte=F('reorder_level')
-                         ).count()
-    out_of_stock_count = Product.objects.filter(stock_quantity=0).count()
+    # call the inventory stats function to get the summary stats
+    stats = get_inventory_stats()
+
+    # get total users
+    total_users = User.objects.count()
 
     # Recent sales (last 8)
     recent_sales = Sale.objects.select_related('product').order_by('-date')[:8]
@@ -557,12 +549,12 @@ def admin_panel(request):
     )
 
     context = {
-        'total_products':     total_products,
+        'total_products':     stats['total_products'],
         'total_users':        total_users,
-        'total_sales':        total_sales,
-        'inventory_value':    inventory_value,
-        'low_stock_count':    low_stock_count,
-        'out_of_stock_count': out_of_stock_count,
+        'total_sales':        stats['total_sales'],
+        'inventory_value':    stats['inventory_value'],
+        'low_stock_count':    stats['low_stock_count'],
+        'out_of_stock_count': stats['out_of_stock_count'],
         'recent_sales':       recent_sales,
         'top_products':       top_products,
     }
@@ -570,7 +562,7 @@ def admin_panel(request):
 
 
 # ── ADMIN GENERATE FORECAST ───────────────────────────────────
-@role_required(['ADMIN'])
+@permission_required("generate_forecast")
 @require_POST
 def admin_generate_forecast(request):
     from inventory.forecast_engine import run_forecast_for_product
@@ -588,7 +580,7 @@ def admin_generate_forecast(request):
 
 
 # ── ADMIN DELETE PRODUCT ──────────────────────────────────────
-@role_required(['ADMIN'])
+@permission_required("delete_products")
 def admin_delete_product(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == "POST":
@@ -608,7 +600,7 @@ def admin_delete_product(request, pk):
         return redirect("core:admin_panel")
     return render(request, "core/admin_confirm_delete.html", {"product": product})
 
-@role_required(['ADMIN'])
+@permission_required("manage_users")
 def admin_users(request):
     from accounts.models import User
 
@@ -622,7 +614,7 @@ def admin_users(request):
     })
 
 
-@role_required(['ADMIN'])
+@permission_required("manage_users")
 def toggle_user_active(request, pk):
     """Activate or deactivate a user account."""
     from accounts.models import User
@@ -641,7 +633,7 @@ def toggle_user_active(request, pk):
 # ── STOCK MOVEMENTS AUDIT LOG ──────────────────────────────────
 from django.core.paginator import Paginator
 
-@role_required(['ADMIN'])
+@permission_required("view_stock_movements")
 def stock_movements_view(request):
     movements = StockMovement.objects.select_related('product', 'user').order_by('-date')
 

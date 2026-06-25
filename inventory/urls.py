@@ -31,7 +31,6 @@ urlpatterns = [
     path('api/dashboard-chart-data/', views.dashboard_chart_data, name='dashboard_chart_data'),
 
     # ── Forecasting ───────────────────────────────────────────────
-    path('forecast/generate/',              views.generate_forecast,    name='generate_forecast'),
     path('forecast/patterns/',              views.forecast_patterns,    name='forecast_patterns'),
     path('forecast/results/',              views.view_forecast_results, name='view_forecast_results'),
 
