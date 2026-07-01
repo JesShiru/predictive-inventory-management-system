@@ -76,7 +76,6 @@ def import_inventory(file_path, category_name):
         
                 'stock_quantity': clean_int(row.get('STOCK QUANTITY')),
                 'reorder_level': clean_int(row.get('REORDER LEVEL')),
-                'packing_as_per_plan': clean_int(row.get('PACKING( AS PER PLAN)')),
             
                 'date_of_last_restocking': clean_date(row.get('DATE OF LAST RESTOCKING') or row.get('DATE OF LAST STOCK TAKING')),
             }

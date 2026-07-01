@@ -12,16 +12,19 @@ class User(models.Model):
     username = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=128)
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='STAFF', null=True)
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, null=True)
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(auto_now_add=True)
 
+    # function to return the username when the object is printed
     def __str__(self):
         return self.username
     
+    # function to set the password using Django's hashing mechanism
     def set_password(self, raw_password):
         self.password = make_password(raw_password)
 
+    # function to check the password against the hashed password stored in the database
     def check_password(self, raw_password):
         return check_password(raw_password, self.password)
     

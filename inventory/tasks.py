@@ -26,7 +26,7 @@ Quick start
 import logging
 
 from celery import shared_task
-from inventory.forecasting import run_forecast_for_product
+from inventory.forecast_engine import run_forecast_for_product
 from inventory.models import Product
 
 logger = logging.getLogger(__name__)

@@ -104,10 +104,14 @@
           <td style="font-weight:600;">{{ u.username }}</td>
           <td style="color:var(--text-muted);">{{ u.email|default:"—" }}</td>
           <td>
-            {% if u.role == 'ADMIN' %}
-              <span class="badge badge-low">Admin</span>
+            {% if u.role == "ADMIN" %}
+              <span class="badge admin">Admin</span>
+
+            {% elif u.role == "MANAGER" %}
+                <span class="badge manager">Manager</span>
+
             {% else %}
-              <span class="pill">Staff</span>
+                <span class="badge staff">Staff</span>
             {% endif %}
           </td>
           <td style="color:var(--text-muted);">

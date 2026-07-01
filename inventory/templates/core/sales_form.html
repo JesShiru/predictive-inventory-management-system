@@ -4,7 +4,7 @@
 {% block title %}Record Sale{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/sales_form.css' %}">
+<link rel="stylesheet" href="{% static 'css/sale_form.css' %}">
 {% endblock %}
 
 {% block nav_sales %}active{% endblock %}
@@ -21,7 +21,7 @@
 
 <h1 class="sf-title">Record a Sale</h1>
 
-<div class="form-card">
+<form id="sale-form" class="form-card">
 
     <!-- Success banner -->
     <div class="success-banner" id="success-banner">
@@ -100,7 +100,7 @@
         <p class="footer-note">Fields marked <span>*</span> are required.</p>
         <div class="footer-actions">
             <a href="{% url 'core:product_list' %}" class="btn-cancel">Cancel</a>
-            <button type="button" class="btn-submit" id="submit-btn" onclick="submitSale()">
+            <button type="submit" class="btn-submit" id="submit-btn">
                 <svg width="15" height="15" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor" stroke-width="2.5">
                     <line x1="22" y1="2" x2="11" y2="13" />
@@ -111,7 +111,7 @@
         </div>
     </div>
 
-</div>
+</form>
 
 {% endblock %}
 
@@ -129,6 +129,12 @@
         const errorBanner = document.getElementById('error-banner');
         const errorMsg = document.getElementById('error-msg');
         const submitBtn = document.getElementById('submit-btn');
+
+        const saleForm = document.getElementById("sale-form");
+        saleForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        submitSale();
+        });
 
         /* ── Stock hint when product changes ── */
         productSelect.addEventListener('change', function () {
