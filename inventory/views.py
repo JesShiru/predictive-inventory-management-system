@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.db.models import Sum
@@ -5,8 +7,7 @@ from django.db import transaction
 import json
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
-from .models import Product, Sale, DemandForecast, StockMovement
-from .forms import ProductForm
+from .models import Product, Sale, DemandForecast, StockMovement, Category
 import os
 from django.views.decorators.http import require_POST
 from datetime import date, timedelta
@@ -130,14 +131,49 @@ def product_list(request):
 @permission_required("manage_products")
 def product_create(request):
     if request.method == 'POST':
-        form = ProductForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Product created successfully.")
+        item_no = request.POST.get("item_no")
+        name = request.POST.get("name")
+        category_id = request.POST.get("category")
+        stock_location = request.POST.get("stock_location")
+        unit_price = request.POST.get("unit_price")
+        stock_quantity = request.POST.get("stock_quantity")
+        reorder_level = request.POST.get("reorder_level")
+        restock_date = request.POST.get("date_of_last_restocking")
+        expiry_date = request.POST.get("expiry_date")
+
+        if not item_no:
+            messages.error(request, "Item SKU required.")
             return redirect('core:product_list')
-    else:
-        form = ProductForm()
-    return render(request, 'core/product_form.html', {'form': form})
+        
+        if Decimal(unit_price) < 0:
+            messages.error(request, "Unit price can't be negative.")
+            return redirect('core:product_list')
+        
+        if int(stock_quantity) < 0:
+            messages.error(request, "Stock quantity cannot be negative.")
+            return redirect("core:product_create")
+
+        if int(reorder_level) > int(stock_quantity):
+            messages.error(request, "Reorder level cannot exceed stock quantity.")
+            return redirect("core:product_create")
+
+        category = get_object_or_404(Category, pk=category_id)
+            
+        # record the product in the database
+        Product.objects.create(
+            item_no=item_no,
+            name=name,
+            category=category,
+            stock_location=stock_location,
+            unit_price=Decimal(unit_price),
+            stock_quantity=int(stock_quantity),
+            reorder_level=int(reorder_level),
+            date_of_last_restocking=restock_date,
+            expiry_date=expiry_date or None,
+        )
+    return render(request, 'core/product_form.html', 
+                  {'categories': Category.objects.all(), 
+                    'stock_locations': Product.LOCATION_CHOICES})
 
 # view for updating products
 @permission_required("manage_products")
@@ -147,29 +183,80 @@ def product_update(request, pk):
 
     # Handle the form submission
     if request.method == 'POST':
-        form = ProductForm(request.POST, instance=product)
-        if form.is_valid():
-            updated_product = form.save()
 
-            new_quantity = updated_product.stock_quantity
-            diff = new_quantity - old_quantity
+        # read data from the HTML
+        item_no = request.POST.get("item_no")
+        name = request.POST.get("name")
+        category_id = request.POST.get("category")
+        stock_location = request.POST.get("stock_location")
+        unit_price = request.POST.get("unit_price")
+        stock_quantity = request.POST.get("stock_quantity")
+        reorder_level = request.POST.get("reorder_level")
+        restock_date = request.POST.get("date_of_last_restocking")
+        expiry_date = request.POST.get("expiry_date")
+       
+        # validation
+        try:
+            unit_price = Decimal(unit_price)
+            stock_quantity = int(stock_quantity)
+            reorder_level = int(reorder_level)
+        except ValueError:
+            messages.error(request, "Invalid numeric values.")
+            return redirect("core:product_update", pk=pk)
+        
+        if unit_price < 0:
+            messages.error(request, "Unit price cannot be negative.")
+            return redirect("core:product_update", pk=pk)
 
-            # Only log if stock quantity actually changed
-            if diff != 0:
-                StockMovement.objects.create(
-                    product=updated_product,
-                    movement_type='IN' if diff > 0 else 'OUT',
-                    action='RESTOCK' if diff > 0 else 'ADJUSTMENT',
-                    quantity=abs(diff),
-                    user=request.user,
-                    note=f"Manual stock update: {old_quantity} → {new_quantity}"
-                )
+        if stock_quantity < 0:
+            messages.error(request, "Stock quantity cannot be negative.")
+            return redirect("core:product_update", pk=pk)
 
-            messages.success(request, "Product updated successfully.")
-            return redirect('core:product_list')
-    else:
-        form = ProductForm(instance=product)
-    return render(request, 'core/product_form.html', {'form': form, 'product': product})
+        if reorder_level < 0:
+            messages.error(request, "Reorder level cannot be negative.")
+            return redirect("core:product_update", pk=pk)
+
+        if reorder_level > stock_quantity:
+            messages.error(
+                request,
+                "Reorder level cannot exceed stock quantity."
+            )
+            return redirect("core:product_update", pk=pk)
+        
+        category = get_object_or_404(Category, pk=category_id)
+
+        # Update the fields
+        Product.objects.filter(pk=pk).update(
+            item_no=item_no,
+            name=name,
+            category=category,
+            stock_location=stock_location,
+            unit_price=unit_price,
+            stock_quantity=stock_quantity,
+            reorder_level=reorder_level,
+            date_of_last_restocking=restock_date,
+            expiry_date=expiry_date or None,
+        )
+
+        # record stock movement if stock quantity changed
+        diff = product.stock_quantity - old_quantity
+
+
+        # Only log if stock quantity actually changed
+        if diff != 0:
+            StockMovement.objects.create(
+                product=product,
+                movement_type='IN' if diff > 0 else 'OUT',
+                action='RESTOCK' if diff > 0 else 'ADJUSTMENT',
+                quantity=abs(diff),
+                user=request.user,
+                note=f"Manual stock update: {old_quantity} → {product.stock_quantity}"
+            )
+
+        messages.success(request, "Product updated successfully.")
+        return redirect('core:product_list')
+
+    return render(request, 'core/product_form.html', {'product': product, 'categories': Category.objects.all()})
 
 # view for deleting products
 @permission_required("delete_products")
@@ -227,11 +314,16 @@ def sale_create(request):
                     status=400
                 )
             
-            # Update stock
-            product.stock_quantity -= quantity_sold
-            product.save()
+            # Update stock - modifies the stock quantity for the selected column
+            new_stock = product.stock_quantity - quantity_sold
+
+            Product.objects.filter(pk=product.pk).update(
+            stock_quantity=new_stock
+            )
+
+            product.stock_quantity = new_stock
             
-            # Save the sale
+            # Create the sale object
             sale = Sale.objects.create(
                 product=product,
                 quantity_sold=quantity_sold,

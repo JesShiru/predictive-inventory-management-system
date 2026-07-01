@@ -2,7 +2,7 @@
 inventory/management/commands/run_forecast.py
 
 Run the forecast pipeline directly from the terminal.
-Useful during development and for the panel demo.
+Useful during development.
 
 Usage
 -----

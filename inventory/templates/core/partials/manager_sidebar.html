@@ -1,16 +1,16 @@
     <!-- ── ADMIN SIDEBAR ── -->
     <aside class="sidebar admin-sidebar" id="sidebar">
       <div class="sidebar-logo">
-        <div class="logo-mark admin-logo-mark">A<span>DM</span></div>
+        <div class="logo-mark admin-logo-mark">P<span>IMS</span></div>
         <div class="logo-text">
-          Admin Panel
+          Manager Panel
           <small>Shefa Dairies</small>
         </div>
       </div>
       <nav class="sidebar-nav">
 
         <div class="nav-section">Overview</div>
-        <a href="{% url 'core:admin_panel' %}"
+        <a href="{% url 'core:dashboard' %}"
           class="nav-item {% block nav_admin_home %}{% endblock %}">
           <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
             <rect x="3" y="3" width="7" height="7"/>
@@ -18,7 +18,7 @@
             <rect x="14" y="14" width="7" height="7"/>
             <rect x="3" y="14" width="7" height="7"/>
           </svg>
-          Admin Dashboard
+          Manager Dashboard
         </a>
 
         <div class="nav-section">Inventory</div>
@@ -74,29 +74,6 @@
             <polyline points="14 2 14 8 20 8"/>
           </svg>
           Sales Report
-        </a>
-
-        <div class="nav-section">Users</div>
-        <a href="{% url 'core:admin_users' %}" class="nav-item">
-          <svg width="15" height="15" fill="none" stroke="currentColor"
-                stroke-width="1.8" viewBox="0 0 24 24">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
-            Manage Users
-        </a>
-
-          <a href="{% url 'core:stock_movements' %}" class="nav-item">
-          <svg width="15" height="15" fill="none" stroke="currentColor"
-                stroke-width="1.8" viewBox="0 0 24 24">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
-            Stock Movements
         </a>
 
       </nav>

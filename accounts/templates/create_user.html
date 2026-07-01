@@ -98,6 +98,12 @@
                     name="password1"
                     required
                 >
+                <button type="button" class="auth__toggle-pw" onclick="togglePw('password1')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                </button>
                 {% if errors.password1 %}
                     <div class="error">{{ errors.password1 }}</div>
                 {% endif %}
@@ -113,7 +119,12 @@
                     name="password2"
                     required
                 >
-
+                <button type="button" class="auth__toggle-pw" onclick="togglePw('password2')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                </button>
                 {% if errors.password2 %}
                     <div class="error">{{ errors.password2 }}</div>
                 {% endif %}
@@ -134,19 +145,6 @@
     </div>
 </div>
 
-{block extra_js %}
-<script>
-    // password toggle functionality
-    function togglePw(id){
-        const pwInput = document.getElementById(id);
-        if(pwInput.type === "password"){
-            pwInput.type = "text";
-        } else {
-            pwInput.type = "password";
-        }
-    }
-</script>
-{% endblock %}
 <style>
 
 .form-group{
@@ -212,5 +210,63 @@
 }
 
 </style>
+{% endblock %}
+{% block extra_js%}
+<script>
+  // password toggle functionality
+  function togglePw(id) {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
 
+  // environment wrapper - to wait until DOM is fully loaded before executing any JS code
+  document.addEventListener('DOMContentLoaded', function(){
+    // DOM Element selections
+    const form = document.querySelector('form');
+    const username = document.getElementById('username');
+    const email = document.getElementById('email');
+    const role = document.getElementById('role');
+    const password1 = document.getElementById('password1');
+    const password2 = document.getElementById('password2');
+
+    // Regex checkers
+    function validateEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+    function validatePassword(password) {
+        const errors = [];
+        if (password.length < 8) errors.push("Password must be at least 8 characters long.");
+        if (!/[A-Z]/.test(password)) errors.push("Password must contain at least one uppercase letter.");
+        if (!/[a-z]/.test(password)) errors.push("Password must contain at least one lowercase letter.");
+        if (!/d/.test(password)) errors.push("Password must contain at least one digit.");
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push("Password must contain at least one special character.");
+        return errors;
+    }
+
+    // the submit event listener
+    // input validation
+    let errors = [];
+
+        if (username.value.trim() === "") errors.push("Username is required.");
+
+        if (email.value.trim() === "") {
+            errors.push("Email is required.");
+        } else if (!validateEmail(email.value)) {
+            errors.push("Enter a valid email address.");
+        }
+
+        if (role.value === "") errors.push("Please select a role.");
+
+    // password match and strength checking
+    if (password1.value === "") errors.push("Password is required.");
+    errors.push(...validatePassword(password1.value));
+    if (password1.value !== password2.value) errors.push("Passwords do not match.");
+
+    // blocking submission and showing of errors
+    if (errors.length > 0) {
+    e.preventDefault();
+    alert(errors.join("\n"));
+    }
+  });
+</script>
 {% endblock %}

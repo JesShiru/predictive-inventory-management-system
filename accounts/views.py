@@ -1,8 +1,16 @@
+"""
+This module contains the authentication, authorization, and user management views.
+
+It handles user login/logout lifecycles, session assignment, and an administrative
+interface for creating users with role-based restrictions.
+"""
+
 import re
 from django.contrib import messages
 from .decorators import permission_required
 from django.shortcuts import render, redirect
 from .models import User
+from django.http import HttpResponseForbidden
 
 # view for creating a new user
 @permission_required("create_user")
@@ -114,6 +122,7 @@ def login_view(request):
 
             # Store user information in session
             request.session["user_id"] = user.id
+            request.session["username"] = user.username
             request.session["email"] = user.email
             request.session["role"] = user.role
 
@@ -123,7 +132,7 @@ def login_view(request):
                 return redirect("core:admin_panel")
 
             elif user.role == "MANAGER":
-                return redirect("core:manager_dashboard")
+                return redirect("core:dashboard")
 
             else:
                 return redirect("core:dashboard")
@@ -141,3 +150,7 @@ def logout_view(request):
     request.session.flush()
 
     return redirect("accounts:login")
+
+# unauthorized view
+def unauthorized_view(request):
+    return HttpResponseForbidden("<h1>403 Forbidden</h1><p>You do not have permission to view this page.</p>")

@@ -11,7 +11,94 @@
   <form method="post">
     {% csrf_token %}
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-      {{ form.as_div }}
+      <div class="field-group">
+        <label for="item_no">Item SKU</label>
+        <input
+          type="text"
+          id="item_no"
+          name="item_no"
+          value="{{ product.item_no|default_if_none:'' }}"
+          required
+        >
+      </div>
+      <div class="field-group">
+        <label for="name">Product Name</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          value="{{ product.name|default_if_none:'' }}"
+          required
+        >
+      </div>
+      <div class="field-group">
+        <label for="stock_location">Stock Location</label>
+          <select id="stock_location" name="stock_location" required>
+              <option value="">Select Stock Location</option>
+
+              {% for value, label in stock_locations %}
+                  <option value="{{ value }}"
+                      {% if product.stock_location == value %}selected{% endif %}>
+                      {{ label }}
+                  </option>
+              {% endfor %}
+          </select>
+      </div>
+      <div class="field-group">
+        <label for="reorder_level">Reorder Level</label>
+        <input
+          type="number"
+          step="1"
+          min="0"
+          id="reorder_level"
+          name="reorder_level"
+          value="{{ product.reorder_level|default_if_none:'' }}"
+          required
+        >
+      </div>
+      <div class="field-group">
+        <label for="category">Category</label>
+        <select id="category" name="category" required>
+          <option value="">Select Category</option>
+          {% for category in categories %}
+            <option value="{{ category.id }}" 
+            {% if product.category and product.category.id == category.id %}selected{% endif %}>{{ category.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field-group">
+        <label for="unit_price">Unit Price</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          id="unit_price"
+          name="unit_price"
+          value="{{ product.unit_price|default_if_none:'' }}"
+          required
+        >
+      </div>
+      <div class="field-group">
+        <label for="expiry_date">Expiry Date</label>
+        <input
+          type="date"
+          id="expiry_date"
+          name="expiry_date"
+          value="{{ product.expiry_date|date:'Y-m-d'|default_if_none:'' }}"
+          required
+        >
+      </div>
+      <div class="field-group">
+        <label for="restock_date">Restock date</label>
+        <input
+          type="date"
+          id="restock_date"
+          name="restock_date"
+          value="{{ product.date_of_last_restocking|date:'Y-m-d'|default_if_none:'' }}"
+          required
+        >
+      </div>
+
     </div>
     <div style="margin-top: 30px; display: flex; gap: 15px;">
       <button type="submit"

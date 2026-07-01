@@ -39,7 +39,6 @@ class Product(models.Model):
             return 'RESTOCK'
         return 'OK'
     
-    # models.py
     @property
     def expiry_color(self):
         from datetime import date
