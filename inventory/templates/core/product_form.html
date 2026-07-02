@@ -45,6 +45,34 @@
           </select>
       </div>
       <div class="field-group">
+        {% if product %}
+          <label for="quantity">Add/Remove Stock</label>
+          <input
+            type="number"
+            step="1"
+            id="quantity"
+            name="quantity"
+            value="0"
+            required
+          >
+          <p class="helptext">
+            Current stock: {{ product.stock_quantity }}. Enter a positive number to add stock (e.g. 10),
+            or a negative number to correct/reduce stock (e.g. -5).
+          </p>
+        {% else %}
+          <label for="quantity">Quantity</label>
+          <input
+            type="number"
+            step="1"
+            min="0"
+            id="quantity"
+            name="quantity"
+            value=""
+            required
+          >
+        {% endif %}
+      </div>
+      <div class="field-group">
         <label for="reorder_level">Reorder Level</label>
         <input
           type="number"
@@ -152,9 +180,31 @@
   }
 </style>
 <script>
-  // Add base form styles via JS to django generated elements to prevent custom css mess
   document.querySelectorAll('.form-card div > label').forEach(label => {
     label.parentElement.classList.add('django-form-group');
   });
+
+  // live client-side check for negative resulting stock
+  const quantityInput = document.getElementById('quantity');
+  if (quantityInput && quantityInput.dataset.currentStock !== undefined) {
+    const currentStock = parseInt(quantityInput.dataset.currentStock, 10);
+    const helptext = document.getElementById('quantity-helptext');
+    const originalText = helptext.textContent;
+
+    quantityInput.addEventListener('input', () => {
+      const change = parseInt(quantityInput.value, 10) || 0;
+      const resulting = currentStock + change;
+
+      if (resulting < 0) {
+        quantityInput.style.borderColor = '#dc2626';
+        helptext.textContent = `This would result in ${resulting} units — stock can't go negative.`;
+        helptext.style.color = '#dc2626';
+      } else {
+        quantityInput.style.borderColor = '';
+        helptext.textContent = `Resulting stock: ${resulting}.`;
+        helptext.style.color = '';
+      }
+    });
+  }
 </script>
 {% endblock %}

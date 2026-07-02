@@ -91,40 +91,36 @@
             <!-- Password -->
             <div class="form-group">
                 <label for="password1">Password</label>
-
-                <input
-                    type="password"
-                    id="password1"
-                    name="password1"
-                    required
-                >
-                <button type="button" class="auth__toggle-pw" onclick="togglePw('password1')">
-                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                        <circle cx="12" cy="12" r="3" />
-                    </svg>
-                </button>
-                {% if errors.password1 %}
-                    <div class="error">{{ errors.password1 }}</div>
-                {% endif %}
+                <div class="auth__input-wrap">
+                    <input type="password" id="password1" name="password1" required>
+                    <button type="button" class="auth__toggle-pw" onclick="togglePw('password1')">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                    </button>
+                </div>
+                {% if errors.password1 %}<div class="error">{{ errors.password1 }}</div>{% endif %}
             </div>
 
             <!-- Confirm Password -->
             <div class="form-group">
                 <label for="password2">Confirm Password</label>
 
-                <input
-                    type="password"
-                    id="password2"
-                    name="password2"
-                    required
-                >
-                <button type="button" class="auth__toggle-pw" onclick="togglePw('password2')">
-                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                        <circle cx="12" cy="12" r="3" />
-                    </svg>
-                </button>
+                <div class="auth__input-wrap">
+                    <input
+                        type="password"
+                        id="password2"
+                        name="password2"
+                        required
+                    >
+                    <button type="button" class="auth__toggle-pw" onclick="togglePw('password2')">
+                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                    </button>
+                </div>
                 {% if errors.password2 %}
                     <div class="error">{{ errors.password2 }}</div>
                 {% endif %}
@@ -180,6 +176,9 @@
     color:#dc2626;
     margin-top:6px;
     font-size:.875rem;
+}
+.auth__input-wrap input {
+    padding-right: 38px;
 }
 
 .btn-primary{

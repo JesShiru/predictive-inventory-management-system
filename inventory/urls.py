@@ -13,7 +13,6 @@ urlpatterns = [
     path('products/',                   views.product_list,   name='product_list'),
     path('products/add/',               views.product_create, name='product_create'),
     path('products/<int:pk>/edit/',     views.product_update, name='product_update'),
-    path('products/<int:pk>/delete/',   views.product_delete, name='product_delete'),
 
     # sales
     path('sales/new/',    views.sale_form_view, name='sales_form'),
@@ -36,8 +35,9 @@ urlpatterns = [
 
     # ── Admin panel ───────────────────────────────────────────────
     path('admin-panel/delete/<int:pk>/',     views.admin_delete_product,   name='admin_delete_product'),
-    path('admin-panel/generate-forecast/',   views.admin_generate_forecast, name='admin_generate_forecast'),
+    path('admin-panel/generate-forecast/',   views.generate_forecast, name='generate_forecast'),
     path('admin-panel/users/',               views.admin_users,             name='admin_users'),
+    path('admin-panel/users/<int:pk>/update/', views.update_user_role,        name='update_user_role'),
     path('admin-panel/users/<int:pk>/toggle/', views.toggle_user_active,   name='toggle_user_active'),
     path('admin-panel/stock-movements/',     views.stock_movements_view,    name='stock_movements'),
 ]

@@ -28,6 +28,7 @@ class Product(models.Model):
     reorder_level = models.IntegerField(default=0)
     expiry_date = models.DateField(blank=True, null=True)
     date_of_last_restocking = models.DateField(blank=True, null=True)
+    is_deleted = models.BooleanField(default=False)
 
     @property
     def total_value(self):
@@ -62,7 +63,7 @@ class StockMovement(models.Model):
         ('DELETE',     'Product Deleted'),
     ]
     
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
     movement_type = models.CharField(max_length=3, choices=MOVEMENT_TYPES)
     action = models.CharField(max_length=20, choices=ACTION_CHOICES, default='SALE')
     quantity = models.IntegerField()

@@ -24,7 +24,6 @@ if not django.conf.settings.configured:
     django.setup()
 
 
-
 def get_engine():
     from sqlalchemy.engine import URL
 

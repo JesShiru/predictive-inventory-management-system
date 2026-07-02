@@ -120,6 +120,10 @@ def login_view(request):
         # authentication and session management
         if user and user.check_password(password):
 
+            if not user.is_active:
+                messages.error(request, "Your account is inactive. Please contact the administrator.")
+                return render(request, "login.html")
+
             # Store user information in session
             request.session["user_id"] = user.id
             request.session["username"] = user.username

@@ -57,34 +57,5 @@
           Low Stock
         </a>
 
-        <div class="nav-section">Forecast</div>
-        <a href="{% url 'core:forecast_patterns' %}"
-          class="nav-item {% block nav_forecast_staff %}{% endblock %}">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-            <polyline points="17 6 23 6 23 12"/>
-          </svg>
-          Forecast Patterns
-        </a>
-        <a href="{% url 'core:view_forecast_results' %}"
-          class="nav-item {% block nav_results_staff %}{% endblock %}">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-            <line x1="18" y1="20" x2="18" y2="10"/>
-            <line x1="12" y1="20" x2="12" y2="4"/>
-            <line x1="6" y1="20" x2="6" y2="14"/>
-          </svg>
-          View Forecast Results
-        </a>
-
-        <div class="nav-section">Reports</div>
-        <a href="{% url 'core:sales_report' %}"
-          class="nav-item {% block nav_report_staff %}{% endblock %}">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
-          Sales Report
-        </a>
-
       </nav>
     </aside>

@@ -1,8 +1,7 @@
 from decimal import Decimal
-
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
-from django.db.models import Sum
+from django.db.models import Sum, Avg, Max, F
 from django.db import transaction
 import json
 from django.http import JsonResponse, HttpResponse
@@ -13,14 +12,17 @@ from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 from accounts.decorators import permission_required
 from accounts.models import User
+from inventory.forecast_engine import run_forecast_for_product
 
-# a helper function for inventory statistics
-# called in the dashboard view and the admin panel view
+"""
+Helper function for inventory statistics
+called in the dashboard view and the admin panel view
+"""
 def get_inventory_stats():
-    total_products = Product.objects.count()
+    total_products = Product.objects.filter(is_deleted=False).count()
     total_sales = Sale.objects.count()
-    inventory_value = sum(p.total_value for p in Product.objects.all())
-    all_products = Product.objects.all()
+    inventory_value = sum(p.total_value for p in Product.objects.filter(is_deleted=False))
+    all_products = Product.objects.filter(is_deleted=False)
     out_of_stock_count = all_products.filter(stock_quantity=0).count()
     low_stock_count = all_products.filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level')).count()
 
@@ -54,6 +56,7 @@ def dashboard(request):
     expiry_threshold = today + timedelta(days=7)
 
     expiring_soon = Product.objects.filter(
+        is_deleted=False,
         category__name='Yoghurt',
         expiry_date__isnull=False,
         expiry_date__gte=today,           # not already expired
@@ -61,6 +64,7 @@ def dashboard(request):
     ).order_by('expiry_date')
 
     expired = Product.objects.filter(
+        is_deleted=False,
         category__name='Yoghurt',
         expiry_date__isnull=False,
         expiry_date__lt=today             # already past expiry
@@ -83,9 +87,9 @@ def dashboard(request):
 
 # Product CRUD Views
 from django.db.models import F
-@permission_required("manage_products")
+@permission_required("view_product_status")
 def product_list(request):
-    products = Product.objects.select_related('category').all()
+    products = Product.objects.select_related('category').filter(is_deleted=False)
 
     category = request.GET.get('category', '')
     location = request.GET.get('location', '')
@@ -100,7 +104,7 @@ def product_list(request):
     elif status == 'out':
         products = products.filter(stock_quantity=0)
 
-    all_products = Product.objects.all()
+    all_products = Product.objects.filter(is_deleted=False)
     total_products     = all_products.count()
     low_stock_count    = all_products.filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level')).count()
     out_of_stock_count = all_products.filter(stock_quantity=0).count()
@@ -136,9 +140,9 @@ def product_create(request):
         category_id = request.POST.get("category")
         stock_location = request.POST.get("stock_location")
         unit_price = request.POST.get("unit_price")
-        stock_quantity = request.POST.get("stock_quantity")
+        stock_quantity = request.POST.get("quantity")
         reorder_level = request.POST.get("reorder_level")
-        restock_date = request.POST.get("date_of_last_restocking")
+        restock_date = request.POST.get("restock_date")
         expiry_date = request.POST.get("expiry_date")
 
         if not item_no:
@@ -171,18 +175,23 @@ def product_create(request):
             date_of_last_restocking=restock_date,
             expiry_date=expiry_date or None,
         )
+        messages.success(request, "Product created successfully.")
+        return redirect('core:product_list')
     return render(request, 'core/product_form.html', 
                   {'categories': Category.objects.all(), 
                     'stock_locations': Product.LOCATION_CHOICES})
-
 # view for updating products
 @permission_required("manage_products")
 def product_update(request, pk):
-    product = get_object_or_404(Product, pk=pk)
+    product = get_object_or_404(Product, pk=pk, is_deleted=False)
     old_quantity = product.stock_quantity  # ← capture the old quantity before save
 
     # Handle the form submission
     if request.method == 'POST':
+
+        # get the user from the session
+        user_id = request.session.get("user_id")
+        user = get_object_or_404(User, pk=user_id)
 
         # read data from the HTML
         item_no = request.POST.get("item_no")
@@ -190,19 +199,21 @@ def product_update(request, pk):
         category_id = request.POST.get("category")
         stock_location = request.POST.get("stock_location")
         unit_price = request.POST.get("unit_price")
-        stock_quantity = request.POST.get("stock_quantity")
+        quantity_change = request.POST.get("quantity")
         reorder_level = request.POST.get("reorder_level")
-        restock_date = request.POST.get("date_of_last_restocking")
+        restock_date = request.POST.get("restock_date")
         expiry_date = request.POST.get("expiry_date")
        
         # validation
         try:
             unit_price = Decimal(unit_price)
-            stock_quantity = int(stock_quantity)
+            quantity_change = int(quantity_change)
             reorder_level = int(reorder_level)
         except ValueError:
             messages.error(request, "Invalid numeric values.")
             return redirect("core:product_update", pk=pk)
+        
+        stock_quantity = old_quantity + quantity_change 
         
         if unit_price < 0:
             messages.error(request, "Unit price cannot be negative.")
@@ -239,7 +250,7 @@ def product_update(request, pk):
         )
 
         # record stock movement if stock quantity changed
-        diff = product.stock_quantity - old_quantity
+        diff = stock_quantity - old_quantity
 
 
         # Only log if stock quantity actually changed
@@ -249,25 +260,16 @@ def product_update(request, pk):
                 movement_type='IN' if diff > 0 else 'OUT',
                 action='RESTOCK' if diff > 0 else 'ADJUSTMENT',
                 quantity=abs(diff),
-                user=request.user,
-                note=f"Manual stock update: {old_quantity} → {product.stock_quantity}"
+                user=user,
+                note=f"Manual stock update: {old_quantity} → {stock_quantity}"
             )
 
         messages.success(request, "Product updated successfully.")
         return redirect('core:product_list')
 
-    return render(request, 'core/product_form.html', {'product': product, 'categories': Category.objects.all()})
-
-# view for deleting products
-@permission_required("delete_products")
-def product_delete(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    if request.method == 'POST':
-        product.delete()
-        messages.success(request, "Product deleted successfully.")
-        return redirect('core:product_list')
-    return render(request, 'core/product_confirm_delete.html', {'product': product})
-
+    return render(request, 'core/product_form.html', 
+                  {'product': product, 'categories': Category.objects.all(), 
+                   'stock_locations': Product.LOCATION_CHOICES})
 
 # Sales API Endpoint
 @require_http_methods(["POST"])
@@ -306,8 +308,12 @@ def sale_create(request):
     try:
         with transaction.atomic():
             # Lock the product row for update to prevent race conditions
-            product = Product.objects.select_for_update().get(id=product_id)
-            
+            product = Product.objects.select_for_update().get(id=product_id, is_deleted=False)
+
+            #get the user from the request session
+            user_id = request.session.get("user_id")
+            user = get_object_or_404(User, pk=user_id)
+
             if product.stock_quantity < quantity_sold:
                 return JsonResponse(
                     {"error": f"Insufficient stock. Only {product.stock_quantity} available."},
@@ -336,7 +342,7 @@ def sale_create(request):
                 movement_type='OUT',
                 action='SALE',
                 quantity=quantity_sold,
-                user=request.user,
+                user=user,
                 note=f'Sale ID: {sale.id}'
             )
             
@@ -361,7 +367,7 @@ def sale_create(request):
 # sales form view
 @permission_required("record_sales")
 def sale_form_view(request):
-    products = Product.objects.select_related('category').filter(category__name='Yoghurt')
+    products = Product.objects.select_related('category').filter(category__name='Yoghurt', is_deleted=False)
     product_options = [
         {
             'val':   str(p.pk),
@@ -376,15 +382,15 @@ def sale_form_view(request):
     })
 
 # out of stock view
-@permission_required("view_reports")
+@permission_required("view_product_status")
 def out_of_stock_view(request):
-    out_of_stock = Product.objects.select_related('category').filter(stock_quantity=0)
+    out_of_stock = Product.objects.select_related('category').filter(stock_quantity=0, is_deleted=False)
     return render(request, 'core/out_of_stock.html', {'products': out_of_stock, 'count': out_of_stock.count()})
 
 # low stock view
-@permission_required("view_reports")
+@permission_required("view_product_status")
 def low_stock_view(request):
-    low_stock = Product.objects.select_related('category').filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level'))
+    low_stock = Product.objects.select_related('category').filter(stock_quantity__gt=0, stock_quantity__lte=F('reorder_level'), is_deleted=False)
     return render(request, 'core/low_stock.html', {'products': low_stock, 'count': low_stock.count()})
 
 # Sales report view
@@ -460,7 +466,7 @@ def sales_report(request):
     
 
 # DASHBOARD CHART DATA (JSON endpoint)
-@permission_required("view_reports")
+@permission_required("dashboard_chart")
 def dashboard_chart_data(request):
     since = date.today() - timedelta(days=90)
 
@@ -579,11 +585,10 @@ def view_forecast_results(request):
     Shows per-SKU forecast totals and average daily demand for the next 30 days.
     Restock status is handled separately by the stock monitoring dashboard.
     """
-    from django.db.models import Avg, Max, Sum
 
     today        = date.today()
     next_30_days = today + timedelta(days=30)
-    products     = Product.objects.filter(category__name="Yoghurt")
+    products     = Product.objects.filter(category__name="Yoghurt", is_deleted=False)
 
     results = []
     for product in products:
@@ -617,7 +622,6 @@ def view_forecast_results(request):
 # ── ADMIN PANEL ───────────────────────────────────────────────
 @permission_required("view_admin_dashboard")
 def admin_panel(request):
-    from django.db.models import Sum, F
 
     # call the inventory stats function to get the summary stats
     stats = get_inventory_stats()
@@ -656,41 +660,57 @@ def admin_panel(request):
 # ── ADMIN GENERATE FORECAST ───────────────────────────────────
 @permission_required("generate_forecast")
 @require_POST
-def admin_generate_forecast(request):
-    from inventory.forecast_engine import run_forecast_for_product
-    from inventory.models import Product
+def generate_forecast(request):
 
+    total_records = 0
     products_processed = 0
 
-    for product in Product.objects.filter(category__name="Yoghurt"):
+    for product in Product.objects.filter(category__name="Yoghurt", is_deleted=False):
         result = run_forecast_for_product(product, force_retrain=True)
         if not result["error"]:
+            total_records += result["records"]
             products_processed += 1
 
-    messages.success(request, f"Forecast complete. {products_processed} products processed.")
-    return redirect("core:admin_panel")
+    messages.success(
+        request, f"Forecast complete. {products_processed} products processed."
+        f"{total_records} records saved."
+        )
+    return redirect("core:view_forecast_results")
 
 
 # ── ADMIN DELETE PRODUCT ──────────────────────────────────────
 @permission_required("delete_products")
 def admin_delete_product(request, pk):
-    product = get_object_or_404(Product, pk=pk)
+    product = get_object_or_404(
+        Product,
+        pk=pk,
+        is_deleted=False
+    )
+
     if request.method == "POST":
-        name = product.name
-        # Log remaining stock going out
-        if product.stock_quantity > 0:
-            StockMovement.objects.create(
-                product=product,
-                movement_type='OUT',
-                action='DELETE',
-                quantity=product.stock_quantity,
-                user=request.user,
-                note=f"Product deleted: {name}"
-            )
-        product.delete()
-        messages.success(request, f"{name} deleted successfully.")
-        return redirect("core:admin_panel")
-    return render(request, "core/admin_confirm_delete.html", {"product": product})
+        user_id = request.session.get("user_id")
+        user = get_object_or_404(User, pk=user_id) 
+
+        StockMovement.objects.create(
+            product=product,
+            movement_type="OUT",
+            action="DELETE",
+            quantity=product.stock_quantity,
+            user=user,
+            note="Product deleted"
+        )
+
+        product.is_deleted = True
+        product.save()
+
+        messages.success(request, "Product deleted successfully.")
+        return redirect("core:product_list")
+
+    return render(
+        request,
+        "core/admin_confirm_delete.html",
+        {"product": product}
+    )
 
 @permission_required("manage_users")
 def admin_users(request):
@@ -705,7 +725,7 @@ def admin_users(request):
         'active_count': users.filter(is_active=True).count(),
     })
 
-
+# Toggle user active status view
 @permission_required("manage_users")
 def toggle_user_active(request, pk):
     """Activate or deactivate a user account."""
@@ -719,6 +739,30 @@ def toggle_user_active(request, pk):
             messages.success(request, f"{user.username} {status} successfully.")
         else:
             messages.warning(request, "You cannot deactivate your own account.")
+    return redirect('core:admin_users')
+
+# update user role view
+@permission_required("manage_users")
+def update_user_role(request, pk):
+    """Change a user's role (e.g. promote Staff to Manager)."""
+    if request.method == 'POST':
+        user = get_object_or_404(User, pk=pk)
+        new_role = request.POST.get("role")
+
+        valid_roles = [choice[0] for choice in User.ROLE_CHOICES]
+        if new_role not in valid_roles:
+            messages.error(request, "Invalid role selected.")
+            return redirect('core:admin_users')
+
+        if user == request.user:
+            messages.warning(request, "You cannot change your own role.")
+            return redirect('core:admin_users')
+
+        old_role = user.role
+        user.role = new_role
+        user.save()
+        messages.success(request, f"{user.username}'s role changed from {old_role} to {new_role}.")
+
     return redirect('core:admin_users')
 
 
@@ -760,7 +804,7 @@ def stock_movements_view(request):
         'sales_count':      sales_count,
         'restock_count':    restock_count,
         'action_choices':   StockMovement.ACTION_CHOICES,
-        'product_choices':  Product.objects.all().order_by('name'),
+        'product_choices':  Product.objects.filter(is_deleted=False).order_by('name'),
         'current_action':     action,
         'current_product':    product_id,
         'current_start_date': start_date,

@@ -30,7 +30,6 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost').split(',')
 
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -41,6 +40,14 @@ INSTALLED_APPS = [
     'inventory',
     'accounts',
 ]
+
+"""
+When a user sends a request to the server, Django processes it through a series of middleware components. 
+Each middleware component can modify the request or response, 
+perform actions before or after the view is called, and handle exceptions. 
+The order of middleware in the MIDDLEWARE list matters, 
+as it determines the sequence in which they are applied.
+"""
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -73,8 +80,6 @@ WSGI_APPLICATION = 'predictive_inventory_management_system.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE':   'django.db.backends.mysql',
@@ -120,7 +125,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",

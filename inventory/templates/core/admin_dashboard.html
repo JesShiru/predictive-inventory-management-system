@@ -213,7 +213,7 @@
 <div class="quick-actions">
   <div class="quick-title">Quick Actions</div>
   <div class="quick-btns">
-    <form method="post" action="{% url 'core:admin_generate_forecast' %}" style="display:inline;">
+    <form method="post" action="{% url 'core:generate_forecast' %}" style="display:inline;">
       {% csrf_token %}
       <button type="submit" class="quick-btn primary"
               onclick="return confirm('Generate a new forecast? This may take a few minutes.')">

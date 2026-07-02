@@ -16,11 +16,12 @@
             Delete {{ product.name }}?
         </h2>
         <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:24px;">
-            This will permanently delete the product and all associated
-            sales records. This action cannot be undone.
+            This product will be removed from the active inventory and will no longer
+            be available for sales or forecasting. Historical sales and stock movement
+            records will be preserved for reporting and auditing purposes.
         </p>
         <div style="display:flex; gap:12px; justify-content:center;">
-            <a href="{% url 'core:admin_panel' %}" class="quick-btn outline">
+            <a href="{% url 'core:product_list' %}" class="quick-btn outline">
                 Cancel
             </a>
             <form method="post">

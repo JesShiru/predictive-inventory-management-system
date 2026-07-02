@@ -19,11 +19,14 @@
 
   {% if request.session.user_id %}
 
-  {% if request.session.role == 'ADMIN' %}
-    {% include "core/partials/admin_sidebar.html" %}
+    {% if request.session.role == 'ADMIN' %}
+        {% include "core/partials/admin_sidebar.html" %}
 
-    {% else %}
-    {% include "core/partials/staff_sidebar.html" %}
+    {% elif request.session.role == 'MANAGER' %}
+        {% include "core/partials/manager_sidebar.html" %}
+
+    {% elif request.session.role == 'STAFF' %}
+        {% include "core/partials/staff_sidebar.html" %}
 
     {% endif %}
 

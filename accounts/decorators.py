@@ -7,6 +7,7 @@ before accessing specific views, redirecting them appropriately if they do not.
 
 from functools import wraps
 from django.shortcuts import redirect
+from .models import User
 from accounts.permissions import ROLE_PERMISSIONS
 
 def permission_required(permission):
@@ -24,9 +25,22 @@ def permission_required(permission):
         def wrapper(request, *args, **kwargs): 
 
             # 1. Authentication Check: Ensure the user has a role assigned in their session
+            user_id = request.session.get("user_id")
             role = request.session.get("role")
 
             if not role:
+                return redirect("accounts:login")
+            
+            # Verify the user still exists and is still active
+            try:
+                user = User.objects.get(pk=user_id)
+            except User.DoesNotExist:
+                request.session.flush()
+                return redirect("accounts:login")
+
+            if not user.is_active:
+                request.session.flush()
+                messages_module_note = None  # see note below re: messages
                 return redirect("accounts:login")
 
             # 2. Authorization Check: Fetch permissions mapped to the user's role

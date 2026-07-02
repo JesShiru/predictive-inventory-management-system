@@ -104,14 +104,17 @@
           <td style="font-weight:600;">{{ u.username }}</td>
           <td style="color:var(--text-muted);">{{ u.email|default:"—" }}</td>
           <td>
-            {% if u.role == "ADMIN" %}
-              <span class="badge admin">Admin</span>
-
-            {% elif u.role == "MANAGER" %}
-                <span class="badge manager">Manager</span>
-
+            {% if u != request.session.user %}
+              <form method="post" action="{% url 'core:update_user_role' u.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <select name="role" class="role-select" data-role="{{ u.role }}" onchange="this.form.submit()">
+                  {% for value, label in u.ROLE_CHOICES %}
+                    <option value="{{ value }}" {% if u.role == value %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </form>
             {% else %}
-                <span class="badge staff">Staff</span>
+              <span class="badge {{ u.role|lower }}">{{ u.role|capfirst }}</span>
             {% endif %}
           </td>
           <td style="color:var(--text-muted);">
@@ -125,7 +128,7 @@
             {% endif %}
           </td>
           <td>
-            {% if u != request.user %}
+            {% if u != request.session.user %}
               <form method="post"
                     action="{% url 'core:toggle_user_active' u.pk %}"
                     style="display:inline;"
@@ -155,4 +158,13 @@
   </div>
 </div>
 
+{% endblock %}
+{% block extra_js %}
+<script>
+  document.querySelectorAll('.role-select').forEach(select => {
+    select.addEventListener('change', () => {
+      select.setAttribute('data-role', select.value);
+    });
+  });
+</script>
 {% endblock %}
