@@ -21,27 +21,13 @@
 
 <h1 class="sf-title">Record a Sale</h1>
 
-<form id="sale-form" class="form-card">
-
-    <!-- Success banner -->
-    <div class="success-banner" id="success-banner">
-        <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-            stroke="currentColor" stroke-width="2.5">
-            <polyline points="20 6 9 17 4 12" />
-        </svg>
-        <span id="success-msg">Sale recorded successfully.</span>
-    </div>
-
-    <!-- Error banner -->
-    <div class="error-banner" id="error-banner">
-        <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-            stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-        <span id="error-msg">Something went wrong.</span>
-    </div>
+<form
+    id="sale-form"
+    class="form-card"
+    method="POST"
+    action="{% url 'core:sale_create' %}"
+>
+    {% csrf_token %}
 
     <p class="section-heading">Sale Details</p>
 
@@ -124,17 +110,6 @@
         const priceInput = document.getElementById('id_sale_price');
         const totalInput = document.getElementById('id_total_value');
         const stockHint = document.getElementById('stock-hint');
-        const successBanner = document.getElementById('success-banner');
-        const successMsg = document.getElementById('success-msg');
-        const errorBanner = document.getElementById('error-banner');
-        const errorMsg = document.getElementById('error-msg');
-        const submitBtn = document.getElementById('submit-btn');
-
-        const saleForm = document.getElementById("sale-form");
-        saleForm.addEventListener("submit", function (e) {
-        e.preventDefault();
-        submitSale();
-        });
 
         /* ── Stock hint when product changes ── */
         productSelect.addEventListener('change', function () {
@@ -179,108 +154,6 @@
 
         qtyInput.addEventListener('input', updateTotal);
         priceInput.addEventListener('input', updateTotal);
-
-        /* ── Banner helpers ── */
-        function showSuccess(message) {
-            errorBanner.classList.remove('show');
-            successMsg.textContent = message;
-            successBanner.classList.add('show');
-            // Scroll to top of card
-            successBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        function showError(message) {
-            successBanner.classList.remove('show');
-            errorMsg.textContent = message;
-            errorBanner.classList.add('show');
-            errorBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        function hideBanners() {
-            successBanner.classList.remove('show');
-            errorBanner.classList.remove('show');
-        }
-
-        /* ── Form reset after successful sale ── */
-        function resetForm() {
-            productSelect.value = '';
-            qtyInput.value = '';
-            priceInput.value = '';
-            totalInput.value = '';
-            stockHint.textContent = '';
-            stockHint.className = 'stock-hint';
-            productSelect.focus();
-        }
-
-        /* ── Submit via fetch to JSON API ── */
-        window.submitSale = function () {
-            hideBanners();
-
-            const productId = productSelect.value;
-            const qtySold = qtyInput.value;
-            const salePrice = priceInput.value;
-
-            // Basic client-side validation
-            if (!productId) {
-                showError('Please select a product.');
-                productSelect.focus();
-                return;
-            }
-            if (!qtySold || parseInt(qtySold) <= 0) {
-                showError('Please enter a valid quantity greater than zero.');
-                qtyInput.focus();
-                return;
-            }
-            if (!salePrice || parseFloat(salePrice) < 0) {
-                showError('Please enter a valid sale price.');
-                priceInput.focus();
-                return;
-            }
-
-            // Disable button while submitting
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Recording…';
-
-            fetch("{% url 'core:sale_create' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}',
-                },
-                body: JSON.stringify({
-                    product: parseInt(productId),
-                    quantity_sold: parseInt(qtySold),
-                    sale_price: parseFloat(salePrice),
-                }),
-            })
-                .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-                .then(function (result) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<svg width="15" height="15" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Record Sale';
-
-                    if (result.ok) {
-                        const d = result.data;
-                        showSuccess(
-                            'Sale recorded — ' + d.quantity_sold + ' unit(s) sold. ' +
-                            'Total: KES ' + parseFloat(d.total_sale_value).toLocaleString('en-KE', { minimumFractionDigits: 2 }) + '. ' +
-                            'Updated stock: ' + d.updated_stock_level + ' units remaining.'
-                        );
-                        // Update the stock hint for the same product
-                        const selectedOpt = productSelect.options[productSelect.selectedIndex];
-                        if (selectedOpt) {
-                            selectedOpt.dataset.stock = d.updated_stock_level;
-                        }
-                        resetForm();
-                    } else {
-                        showError(result.data.error || 'An unexpected error occurred.');
-                    }
-                })
-                .catch(function () {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<svg width="15" height="15" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Record Sale';
-                    showError('Network error — please check your connection and try again.');
-                });
-        };
 
     })();
 </script>

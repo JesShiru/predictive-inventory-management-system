@@ -15,8 +15,7 @@ urlpatterns = [
     path('products/<int:pk>/edit/',     views.product_update, name='product_update'),
 
     # sales
-    path('sales/new/',    views.sale_form_view, name='sales_form'),
-    path('sales/create/', views.sale_create,    name='sale_create'),
+    path("sales/", views.sale_create, name="sale_create"),
 
     # stock status
     path('out-of-stock/', views.out_of_stock_view, name='out_of_stock'),

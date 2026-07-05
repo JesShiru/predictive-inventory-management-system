@@ -5,20 +5,29 @@ from django.db.models import Sum, Avg, Max, F
 from django.db import transaction
 import json
 from django.http import JsonResponse, HttpResponse
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_POST
 from .models import Product, Sale, DemandForecast, StockMovement, Category
 import os
-from django.views.decorators.http import require_POST
 from datetime import date, timedelta
 from accounts.decorators import permission_required
 from accounts.models import User
 from inventory.forecast_engine import run_forecast_for_product
 
-"""
-Helper function for inventory statistics
-called in the dashboard view and the admin panel view
-"""
+
 def get_inventory_stats():
+    """
+    Calculate overall inventory statistics.
+
+    Returns:
+        dict: Summary metrics including:
+            - total number of products
+            - total sales records
+            - inventory value
+            - low stock count
+            - out-of-stock count
+
+    Used by both the user dashboard and the administrator dashboard.
+    """
     total_products = Product.objects.filter(is_deleted=False).count()
     total_sales = Sale.objects.count()
     inventory_value = sum(p.total_value for p in Product.objects.filter(is_deleted=False))
@@ -37,6 +46,14 @@ def get_inventory_stats():
 # Dashboard view
 @permission_required("view_dashboard")
 def dashboard(request):
+    """
+    Displays the main inventory dashboard.
+
+    Retrieves inventory statistics, recent sales, top-selling products,
+    and products that are expired or nearing expiry. The collected data
+    is passed to the dashboard template for visualization.
+    """
+
     # call the inventory stats function to get the summary stats
     stats = get_inventory_stats()
 
@@ -175,11 +192,14 @@ def product_create(request):
             date_of_last_restocking=restock_date,
             expiry_date=expiry_date or None,
         )
+        
         messages.success(request, "Product created successfully.")
         return redirect('core:product_list')
     return render(request, 'core/product_form.html', 
                   {'categories': Category.objects.all(), 
                     'stock_locations': Product.LOCATION_CHOICES})
+
+
 # view for updating products
 @permission_required("manage_products")
 def product_update(request, pk):
@@ -204,7 +224,7 @@ def product_update(request, pk):
         restock_date = request.POST.get("restock_date")
         expiry_date = request.POST.get("expiry_date")
        
-        # validation
+        # Validate and convert user input before performing calculations.
         try:
             unit_price = Decimal(unit_price)
             quantity_change = int(quantity_change)
@@ -236,7 +256,7 @@ def product_update(request, pk):
         
         category = get_object_or_404(Category, pk=category_id)
 
-        # Update the fields
+        # Save the updated product information to the database.
         Product.objects.filter(pk=pk).update(
             item_no=item_no,
             name=name,
@@ -249,7 +269,7 @@ def product_update(request, pk):
             expiry_date=expiry_date or None,
         )
 
-        # record stock movement if stock quantity changed
+        # Record an audit trail whenever stock levels are modified.
         diff = stock_quantity - old_quantity
 
 
@@ -272,114 +292,127 @@ def product_update(request, pk):
                    'stock_locations': Product.LOCATION_CHOICES})
 
 # Sales API Endpoint
-@require_http_methods(["POST"])
 @permission_required("record_sales")
 def sale_create(request):
     """
-    API endpoint to record a sale.
-    Expects JSON: { "product": <product_id>, "quantity_sold": <int>, "sale_price": <decimal> }
+    Displays the sales form and processes submitted sales.
+
+    On GET requests, the sales form is displayed.
+
+    On POST requests, the submitted form data is validated,
+    inventory levels are updated, the sale is recorded,
+    and a stock movement audit entry is created.
     """
-    # Validate JSON input
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    if request.method == "POST":
+        # Extract data from the POST request
+        product_id = request.POST.get("product")
+        quantity_sold = request.POST.get("quantity_sold")
+        sale_price = request.POST.get("sale_price")
 
-    # Validate required fields
-    product_id = data.get('product')
-    try:
-        quantity_sold = int(data.get('quantity_sold'))
-    except (TypeError, ValueError):
-        return JsonResponse({"error": "Invalid quantity_sold. Must be an integer."}, status=400)
-    
-    try:
-        sale_price = float(data.get('sale_price'))
-    except (TypeError, ValueError):
-        return JsonResponse({"error": "Invalid sale_price. Must be a number."}, status=400)
+        # Validate required fields
+        try:
+            quantity_sold = int(quantity_sold)
+        except (TypeError, ValueError):
+            messages.error(request, "Quantity sold must be a whole number.")
+            return redirect("core:sale_create")
+        
+        try:
+            sale_price = Decimal(sale_price)
+        except (TypeError, ValueError):
+            messages.error(request, "Invalid sale price.")
+            return redirect("core:sale_create")
 
-    if quantity_sold <= 0:
-        return JsonResponse({"error": "Quantity sold must be greater than zero."}, status=400)
-    if sale_price < 0:
-        return JsonResponse({"error": "Sale price cannot be negative."}, status=400)
-    if not product_id:
-        return JsonResponse({"error": "Product ID is required."}, status=400)
+        if quantity_sold <= 0:
+            messages.error(request, "Quantity sold must be greater than zero.")
+            return redirect("core:sale_create")
+        if sale_price < 0:
+            messages.error(request, "Sale price cannot be negative.")
+            return redirect("core:sale_create")
+        if not product_id:
+            messages.error(request, "Product ID is required.")
+            return redirect("core:sale_create")
 
-    # Use a transaction to ensure atomicity
-    try:
-        with transaction.atomic():
-            # Lock the product row for update to prevent race conditions
-            product = Product.objects.select_for_update().get(id=product_id, is_deleted=False)
+        # Use a transaction to ensure atomicity
+        try:
+            with transaction.atomic():
+                # Lock the product row for update to prevent race conditions
+                product = Product.objects.select_for_update().get(id=product_id, is_deleted=False)
 
-            #get the user from the request session
-            user_id = request.session.get("user_id")
-            user = get_object_or_404(User, pk=user_id)
+                # get the user from the request session
+                user_id = request.session.get("user_id")
+                user = get_object_or_404(User, pk=user_id)
 
-            if product.stock_quantity < quantity_sold:
-                return JsonResponse(
-                    {"error": f"Insufficient stock. Only {product.stock_quantity} available."},
-                    status=400
+                if product.stock_quantity < quantity_sold:
+                    messages.error(
+                        request,
+                        f"Insufficient stock. Only {product.stock_quantity} available."
+                    )
+                    return redirect("core:sale_create")
+                
+                # Update stock - modifies the stock quantity for the selected column
+                new_stock = product.stock_quantity - quantity_sold
+
+                Product.objects.filter(pk=product.pk).update(
+                stock_quantity=new_stock
                 )
-            
-            # Update stock - modifies the stock quantity for the selected column
-            new_stock = product.stock_quantity - quantity_sold
 
-            Product.objects.filter(pk=product.pk).update(
-            stock_quantity=new_stock
-            )
+                product.stock_quantity = new_stock
+                
+                # Create the sale object
+                sale = Sale.objects.create(
+                    product=product,
+                    quantity_sold=quantity_sold,
+                    sale_price=sale_price
+                )
+                
+                # Create stock movement audit entry
+                StockMovement.objects.create(
+                    product=product,
+                    movement_type='OUT',
+                    action='SALE',
+                    quantity=quantity_sold,
+                    user=user,
+                    note=f'Sale ID: {sale.id}'
+                )
+                
+                messages.success(
+                    request,
+                    f"Sale recorded successfully. {quantity_sold} unit(s) sold."
+                )
 
-            product.stock_quantity = new_stock
-            
-            # Create the sale object
-            sale = Sale.objects.create(
-                product=product,
-                quantity_sold=quantity_sold,
-                sale_price=sale_price
-            )
-            
-            # Create stock movement audit entry
-            StockMovement.objects.create(
-                product=product,
-                movement_type='OUT',
-                action='SALE',
-                quantity=quantity_sold,
-                user=user,
-                note=f'Sale ID: {sale.id}'
-            )
-            
-            # Return the detailed response including updated stock level
-            response_data = {
-                'id': sale.id,
-                'product': product.id,
-                'quantity_sold': sale.quantity_sold,
-                'sale_price': str(sale.sale_price),
-                'date': sale.date.isoformat(),
-                'total_sale_value': str(sale.total_sale_value),
-                'updated_stock_level': product.stock_quantity
-            }
-            
-            return JsonResponse(response_data, status=201)
-            
-    except Product.DoesNotExist:
-        return JsonResponse({"error": "Product not found"}, status=404)
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=400)
+                return redirect("core:sale_create")
+                                
+        except Product.DoesNotExist:
+            messages.error(request, "Product not found.")
+            return redirect("core:sale_create")
+        except Exception as e:
+            messages.error(request, f"Error recording sale: {e}")
+            return redirect("core:sale_create")
+        
+    # GET request - render the sales form with product options
+    products = Product.objects.select_related("category").filter(
+        category__name="Yoghurt",
+        is_deleted=False
+    )
 
-# sales form view
-@permission_required("record_sales")
-def sale_form_view(request):
-    products = Product.objects.select_related('category').filter(category__name='Yoghurt', is_deleted=False)
     product_options = [
         {
-            'val':   str(p.pk),
-            'label': f"{p.name} ({p.get_stock_location_display()})",
-            'stock': p.stock_quantity,
-            'price': str(p.unit_price),
+            "val": str(p.pk),
+            "label": f"{p.name} ({p.get_stock_location_display()})",
+            "stock": p.stock_quantity,
+            "price": str(p.unit_price),
         }
         for p in products
     ]
-    return render(request, 'core/sales_form.html', {
-        'product_options': product_options,
-    })
+
+    return render(
+        request,
+        "core/sales_form.html",
+        {
+            "product_options": product_options,
+        }
+    )
+
 
 # out of stock view
 @permission_required("view_product_status")
@@ -465,7 +498,7 @@ def sales_report(request):
         })
     
 
-# DASHBOARD CHART DATA (JSON endpoint)
+# DASHBOARD CHART DATA
 @permission_required("dashboard_chart")
 def dashboard_chart_data(request):
     since = date.today() - timedelta(days=90)
@@ -514,29 +547,6 @@ def download_pdf_report(request):
 
     except Exception as e:
         return HttpResponse(f"PDF generation failed: {e}", status=500)
-
-'''# generate_forecast view
-@permission_required("generate_forecast")
-@require_POST
-def generate_forecast(request):
-    from inventory.forecast_engine import run_forecast_for_product
-    from inventory.models import Product
-
-    total_records = 0
-    products_processed = 0
-
-    for product in Product.objects.filter(category__name="Yoghurt"):
-        result = run_forecast_for_product(product, force_retrain=True)
-        if not result["error"]:
-            total_records += result["records"]
-            products_processed += 1
-
-    messages.success(
-        request,
-        f"Forecast complete. {products_processed} products processed, "
-        f"{total_records} records saved."
-    )
-    return redirect("core:view_forecast_results")'''
 
 
 # forecast_patterns view
@@ -626,7 +636,7 @@ def admin_panel(request):
     # call the inventory stats function to get the summary stats
     stats = get_inventory_stats()
 
-    # get total users
+    # Calculate the total number of registered system users.
     total_users = User.objects.count()
 
     # Recent sales (last 8)

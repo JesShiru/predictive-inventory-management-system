@@ -31,7 +31,9 @@ body {
 .expiry-red { color: #dc2626; }
 .expiry-amber { color: #d97706; }
 
-/* ── SIDEBAR ── */
+/* ==========================================================
+   SIDEBAR
+   ========================================================== */
 .sidebar {
   width: var(--sidebar-width);
   min-height: 100vh;
@@ -50,6 +52,7 @@ body {
   transform: translateX(-220px);
 }
 
+/* SIDEBAR LOGO AREA */
 .sidebar-logo {
   display: flex;
   align-items: center;
@@ -130,7 +133,7 @@ body {
   font-weight: 500;
 }
 
-/* ── MAIN ── */
+/* MAIN APPLICATION WRAPPER */
 .main {
   margin-left: var(--sidebar-width);
   flex: 1;
@@ -140,11 +143,14 @@ body {
   transition: margin-left 0.25s ease;
 }
 
+/* Removes the left margin when the sidebar is hidden */
 .main.no-sidebar {
     margin-left: 0;
 }
 
-/* ── TOPBAR ── */
+/* ==========================================================
+   TOPBAR
+   ========================================================== */
 .topbar {
   background: white;
   border-bottom: 1px solid var(--border);
@@ -164,6 +170,7 @@ body {
   gap: 12px;
 }
 
+/* SIDEBAR TOGGLE BUTTON */
 .menu-btn {
   background: var(--blue);
   border: none;
@@ -187,12 +194,14 @@ body {
   gap: 16px;
 }
 
+/* LOGGED IN USER*/
 .username {
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--text);
 }
 
+/* LOGOUT BUTTON */
 .btn-logout {
   display: flex;
   align-items: center;
@@ -210,10 +219,14 @@ body {
 
 .btn-logout:hover { background: var(--red); color: white; }
 
-/* ── CONTENT ── */
+/* ==========================================================
+   CONTENT
+   ========================================================== */
 .content { padding: 28px; flex: 1; }
 
-/* ── MESSAGES ── */
+/* ==========================================================
+   MESSAGE ALERTS
+   ========================================================== */
 .messages-wrap { margin-bottom: 20px; }
 
 .message {
@@ -228,7 +241,9 @@ body {
 .message.warning { background: #fef3c7; color: #92400e; }
 .message.info    { background: #dbeafe; color: #1e40af; }
 
-/* ── FOOTER ── */
+/* ==========================================================
+   FOOTER
+   ========================================================== */
 .site-footer {
   text-align: center;
   padding: 18px 28px;
@@ -238,7 +253,9 @@ body {
   background: white;
 }
 
-/* AUTH PAGES (login & register) ── */
+/* ==========================================================
+   AUTH PAGES (login & register)
+   ========================================================== */
 .auth {
   display: flex;
   flex-direction: column;
@@ -458,7 +475,9 @@ body {
   color: #9ca3af;
 }
 
-/*Dashboard styles*/
+/* ==========================================================
+   DASHBOARD STYLES
+   ========================================================== */
 /* ── STAT CARDS ── */
 .stat-grid {
   display: grid;
@@ -510,7 +529,9 @@ body {
 .stat-value.large { font-size: 1.6rem; }
 .stat-icon { color: rgba(255,255,255,0.3); flex-shrink: 0; }
 
-/* ── GRID LAYOUTS ── */
+/* ==========================================================
+   GRID LAYOUTS
+   ========================================================== */
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 300px;
@@ -590,7 +611,9 @@ body {
 .alert-badge.amber { background: #b45309; }
 .alert-badge.cyan  { background: #0e7490; }
 
-/* ── TABLES ── */
+/* ==========================================================
+   TABLES
+   ========================================================== */
 table { width: 100%; border-collapse: collapse; }
 
 thead th {
@@ -639,7 +662,9 @@ tbody tr:hover { background: #fafbff; }
 
 .view-all:hover { background: var(--blue-light); border-color: var(--blue); }
 
-/* ── QUICK ACTIONS ── */
+/* ==========================================================
+   QUICK ACTIONS
+   ========================================================== */
 .quick-actions {
   background: white;
   border-radius: 12px;
@@ -688,5 +713,7 @@ tbody tr:hover { background: #fafbff; }
 
 .quick-btn.outline:hover { background: var(--blue-light); }
 
-/* ── CHART ── */
+/* ==========================================================
+   CHART
+   ========================================================== */
 .chart-wrap { position: relative; height: 220px; }

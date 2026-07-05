@@ -341,35 +341,50 @@ def rollout_forecast(model, seed_window: np.ndarray, scaler, steps: int,
 # STEP 9 — Save forecasts to DemandForecast model
 # ─────────────────────────────────────────────────────────────────────────────
 
-def save_forecasts_to_db(product, label: str, predictions: list, start_date) -> int:
+def save_forecasts_to_db(product, predictions: list, start_date) -> int:
     """
-    Delete stale rows for this product/horizon window and bulk-insert fresh ones.
+    Save a full forecast to the database.
+
+    Deletes all existing future forecasts for the product, then inserts one
+    row per predicted day. The notes field indicates the shortest forecast
+    horizon the day belongs to.
+
     Returns the number of rows written.
     """
     from inventory.models import DemandForecast
 
-    horizon_days = len(predictions)
-    end_date     = start_date + timedelta(days=horizon_days)
-
+    # Delete all existing future forecasts
     DemandForecast.objects.filter(
         product=product,
         forecast_date__gt=start_date,
-        forecast_date__lte=end_date,
     ).delete()
 
-    records = [
-        DemandForecast(
-            product=product,
-            forecasted_quantity=max(0, round(qty)),
-            forecast_date=start_date + timedelta(days=i + 1),
-            notes=label,
+    records = []
+
+    for i, qty in enumerate(predictions):
+        day_number = i + 1
+
+        if day_number <= 7:
+            label = "7_days"
+        elif day_number <= 14:
+            label = "14_days"
+        elif day_number <= 30:
+            label = "30_days"
+        else:
+            label = "3_months"
+
+        records.append(
+            DemandForecast(
+                product=product,
+                forecasted_quantity=max(0, round(qty)),
+                forecast_date=start_date + timedelta(days=day_number),
+                notes=label,
+            )
         )
-        for i, qty in enumerate(predictions)
-    ]
 
     DemandForecast.objects.bulk_create(records)
-    return len(records)
 
+    return len(records)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STEP 11 — Model + scaler persistence
@@ -466,32 +481,20 @@ def run_forecast_for_product(product, force_retrain: bool = False) -> dict:
     MAX_DAYS = 90
     predictions = rollout_forecast(model, seed_window, scaler, MAX_DAYS, last_date)
 
-    # Delete all existing future forecasts for this product
-    from inventory.models import DemandForecast
-    DemandForecast.objects.filter(
-            product=product,
-            forecast_date__gt=last_date,
-        ).delete()
+    MAX_DAYS = max(HORIZONS.values())
 
-        # Write one row per day — label it with the shortest horizon it belongs to
-    records = []
-    for i, qty in enumerate(predictions):
-            day_number = i + 1
-            if   day_number <= 7:  label = "7_days"
-            elif day_number <= 14: label = "14_days"
-            elif day_number <= 30: label = "30_days"
-            else:                  label = "3_months"
+    predictions = rollout_forecast(
+        model=model,
+        seed_window=seed_window,
+        scaler=scaler,
+        steps=MAX_DAYS,
+        last_date=last_date,
+    )
 
-            records.append(
-                DemandForecast(
-                    product=product,
-                    forecasted_quantity=max(0, round(qty)),
-                    forecast_date=last_date + timedelta(days=day_number),
-                    notes=label,
-                )
-            )
-
-    DemandForecast.objects.bulk_create(records)
-    result["records"] = len(records)
+    result["records"] = save_forecasts_to_db(
+        product=product,
+        predictions=predictions,
+        start_date=last_date,
+    )
 
     return result
